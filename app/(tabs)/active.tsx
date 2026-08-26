@@ -6,7 +6,6 @@ import { useRouter } from "expo-router";
 import * as KeepAwake from "expo-keep-awake";
 import { useWorkout } from "@/src/context/WorkoutContext";
 import { Timer } from "@/src/components/Timer";
-import { HeartRateDisplay } from "@/src/components/HeartRateDisplay";
 import { MobileWorkoutController } from "@/src/components/MobileWorkoutController";
 import { TVWorkoutView } from "@/src/components/TVWorkoutView";
 import { subscribeExternalDisplay } from "@/src/services/externalDisplay";
@@ -38,7 +37,6 @@ export default function ActiveWorkoutScreen() {
     completeSet,
     skipExercise,
     endWorkout,
-    bpm,
     weeklyProgram,
   } = useWorkout();
   const [external, setExternal] = useState(false);
@@ -151,20 +149,48 @@ export default function ActiveWorkoutScreen() {
       : "ATTIVO";
   const setText = `${snapshot.setIndex + 1} / ${currentEx.sets} · ${currentEx.reps} reps`;
 
-  if (snapshot.state === "done") {
-    // auto-redirect after a brief moment handled inside Termina
-  }
-
   if (external && ex) {
     return (
-      <TVWorkoutView
-        exerciseName={ex.name}
-        nextExerciseName={nextEx?.name}
-        timerText={timerText}
-        setText={setText}
-        bpm={bpm}
-        bandColor={band}
-      />
+      <SafeAreaView style={styles.root} edges={["top"]}>
+        <View style={styles.topRow}>
+          <Pressable
+            testID="close-active"
+            onPress={() => router.push("/(tabs)")}
+            hitSlop={12}
+          >
+            <Ionicons name="chevron-down" size={28} color={colors.onSurface} />
+          </Pressable>
+          <View style={{ alignItems: "center" }}>
+            <Text style={styles.workoutName}>{activeWorkout.name}</Text>
+            <Text style={[styles.stateBadge, { color: band }]}>{stateLabel}</Text>
+          </View>
+          <View style={{ width: 28 }} />
+        </View>
+
+        <TVWorkoutView
+          exerciseName={ex.name}
+          nextExerciseName={nextEx?.name}
+          timerText={timerText}
+          setText={setText}
+          bandColor={band}
+        />
+
+        <MobileWorkoutController
+          state={snapshot.state}
+          onStart={() => activeWorkout && startWorkout(activeWorkout)}
+          onPause={pauseWorkout}
+          onResume={resumeWorkout}
+          onCompleteSet={completeSet}
+          onSkip={skipExercise}
+          onEnd={async () => {
+            if (isAiSession) {
+              setRpeStep(true);
+            } else {
+              await finishWorkout(undefined);
+            }
+          }}
+        />
+      </SafeAreaView>
     );
   }
 
@@ -182,7 +208,7 @@ export default function ActiveWorkoutScreen() {
           <Text style={styles.workoutName}>{activeWorkout.name}</Text>
           <Text style={[styles.stateBadge, { color: band }]}>{stateLabel}</Text>
         </View>
-        <HeartRateDisplay bpm={bpm} compact />
+        <View style={{ width: 28 }} />
       </View>
 
       <View style={styles.center}>
