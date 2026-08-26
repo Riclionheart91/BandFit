@@ -1,0 +1,72 @@
+{
+  "expo": {
+    "name": "Band Fit",
+    "slug": "band-fit",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/images/icon.png",
+    "scheme": "bandfit",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bandfit.app",
+      "buildNumber": "1",
+      "entitlements": {
+        "com.apple.developer.healthkit": true,
+        "com.apple.developer.healthkit.access": []
+      },
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "Monitora frequenza cardiaca durante l'allenamento",
+        "NSHealthUpdateUsageDescription": "Salva allenamenti su Apple Fitness",
+        "NSCalendarsUsageDescription": "Salva allenamenti nel calendario",
+        "NSCalendarsFullAccessUsageDescription": "Salva allenamenti nel calendario",
+        "NSMotionUsageDescription": "Conteggio ripetizioni automatico",
+        "UIBackgroundModes": ["workout-processing"]
+      }
+    },
+    "android": {
+      "package": "com.bandfit.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#000"
+      },
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "READ_CALENDAR",
+        "WRITE_CALENDAR",
+        "ACTIVITY_RECOGNITION"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#000"
+        }
+      ],
+      "expo-font",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Salva allenamenti nel calendario"
+        }
+      ],
+      "./plugins/withHealthKitBridge"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "baseUrl": "/BandFit"
+    }
+  }
+}
