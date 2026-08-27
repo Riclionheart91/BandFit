@@ -15,7 +15,7 @@ export type DaySession = {
 
 export type WeeklyProgram = {
   id: string;
-  frequency: 2 | 3 | 4;
+  frequency: 2 | 3 | 4 | 5;
   createdAt: string;
   currentWeek: number;
   currentDay: number;
@@ -72,7 +72,7 @@ function buildWorkout(split: Category, week: number, isDeload: boolean, usedIds:
   };
 }
 
-export function generateWeeklyProgram(frequency: 2 | 3 | 4): WeeklyProgram {
+export function generateWeeklyProgram(frequency: 2 | 3 | 4 | 5): WeeklyProgram {
   const splitOrder = aiEngine.frequencyToSplit[frequency] as Category[];
   const days: DaySession[] = [];
   const usedIds = new Set<string>();

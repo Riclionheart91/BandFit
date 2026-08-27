@@ -7,7 +7,7 @@ import {
   Pressable,
   FlatList,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { ExerciseCard } from "@/src/components/ExerciseCard";
@@ -44,6 +44,7 @@ const BANDS: { id: BandFilter; color: string; label: string }[] = [
 
 export default function LibraryScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [cat, setCat] = useState<Filter>("all");
   const [band, setBand] = useState<BandFilter>("all");
 
@@ -132,7 +133,11 @@ export default function LibraryScreen() {
       <Pressable
         testID="open-builder-fab"
         onPress={() => router.push("/builder")}
-        style={({ pressed }) => [styles.fab, pressed && { opacity: 0.85 }]}
+        style={({ pressed }) => [
+          styles.fab,
+          { bottom: insets.bottom + 8 + 58 + 14 },
+          pressed && { opacity: 0.85 },
+        ]}
       >
         <Ionicons name="add" size={28} color={colors.surface} />
         <Text style={styles.fabText}>Crea Allenamento</Text>
@@ -178,7 +183,6 @@ const styles = StyleSheet.create({
   fab: {
     position: "absolute",
     right: spacing.lg,
-    bottom: spacing.lg + 70,
     backgroundColor: colors.brand,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,

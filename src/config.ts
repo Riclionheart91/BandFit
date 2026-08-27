@@ -47,6 +47,7 @@ export const aiEngine = {
     2: ["upper", "lower"],
     3: ["upper", "lower", "core"],
     4: ["upper", "lower", "upper", "core"],
+    5: ["upper", "lower", "core", "upper", "lower"],
   } as Record<number, string[]>,
 };
 

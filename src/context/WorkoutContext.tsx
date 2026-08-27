@@ -73,8 +73,9 @@ type Ctx = {
   batterySaver: boolean;
   setBatterySaver: (v: boolean) => Promise<void>;
   weeklyProgram: WeeklyProgram | null;
-  generateProgram: (frequency: 2 | 3 | 4) => Promise<void>;
+  generateProgram: (frequency: 2 | 3 | 4 | 5) => Promise<void>;
   isCloudMode: boolean;
+  cloudUser: { email: string | null; name: string | null; avatarUrl: string | null } | null;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 };
@@ -92,6 +93,16 @@ function speak(text: string) {
   synth.speak(u);
 }
 
+function extractCloudUser(u: Awaited<ReturnType<typeof getCurrentUser>>) {
+  if (!u) return null;
+  const meta = (u.user_metadata ?? {}) as Record<string, unknown>;
+  return {
+    email: u.email ?? null,
+    name: (meta.full_name as string) ?? (meta.name as string) ?? null,
+    avatarUrl: (meta.avatar_url as string) ?? (meta.picture as string) ?? null,
+  };
+}
+
 export function WorkoutProvider({ children }: { children: React.ReactNode }) {
   const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
   const [snapshot, setSnapshot] = useState<EngineSnapshot | null>(null);
@@ -102,6 +113,11 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
   const [batterySaver, setBatterySaverState] = useState(false);
   const [weeklyProgram, setWeeklyProgram] = useState<WeeklyProgram | null>(null);
   const [isCloudMode, setIsCloudMode] = useState(false);
+  const [cloudUser, setCloudUser] = useState<{
+    email: string | null;
+    name: string | null;
+    avatarUrl: string | null;
+  } | null>(null);
 
   const engineRef = useRef<WorkoutEngine | null>(null);
   const tickerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -132,7 +148,10 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
       }
     });
     getCurrentUser()
-      .then((u: Awaited<ReturnType<typeof getCurrentUser>>) => setIsCloudMode(!!u))
+      .then((u: Awaited<ReturnType<typeof getCurrentUser>>) => {
+        setIsCloudMode(!!u);
+        setCloudUser(extractCloudUser(u));
+      })
       .catch(() => {});
   }, [refresh]);
 
@@ -152,7 +171,7 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const generateProgram = useCallback(
-    async (frequency: 2 | 3 | 4) => {
+    async (frequency: 2 | 3 | 4 | 5) => {
       const p = generateWeeklyProgram(frequency);
       await persistProgram(p);
     },
@@ -366,6 +385,7 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     await cloudSignOut();
     setIsCloudMode(false);
+    setCloudUser(null);
   }, []);
 
   const value = useMemo<Ctx>(
@@ -393,6 +413,7 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
       weeklyProgram,
       generateProgram,
       isCloudMode,
+      cloudUser,
       loginWithGoogle,
       logout,
     }),
@@ -420,6 +441,7 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
       weeklyProgram,
       generateProgram,
       isCloudMode,
+      cloudUser,
       loginWithGoogle,
       logout,
     ]

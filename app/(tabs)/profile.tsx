@@ -1,17 +1,21 @@
 import React from "react";
-import { View, Text, StyleSheet, Pressable, Switch, ScrollView } from "react-native";
+import { View, Text, StyleSheet, Pressable, Switch, ScrollView, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useWorkout } from "@/src/context/WorkoutContext";
 import { todaysSession } from "@/src/services/periodization";
+import { WeeklyProgramCalendar } from "@/src/components/WeeklyProgramCalendar";
 import { uiStrings } from "@/src/config";
 import { colors, radius, spacing, typography } from "@/src/theme";
+
+const FREQUENCIES = [2, 3, 4, 5] as const;
 
 export default function ProfileScreen() {
   const router = useRouter();
   const {
     isCloudMode,
+    cloudUser,
     loginWithGoogle,
     logout,
     batterySaver,
@@ -35,18 +39,39 @@ export default function ProfileScreen() {
         <Text style={styles.title}>{uiStrings.profile.title}</Text>
 
         <View style={styles.card}>
-          <Text style={styles.cardLabel}>
-            {isCloudMode ? uiStrings.profile.cloudSynced : uiStrings.profile.localMode}
-          </Text>
           {isCloudMode ? (
-            <Pressable testID="profile-logout" style={styles.secondaryBtn} onPress={logout}>
-              <Text style={styles.secondaryBtnText}>{uiStrings.profile.logout}</Text>
-            </Pressable>
+            <>
+              <View style={styles.accountRow}>
+                {cloudUser?.avatarUrl ? (
+                  <Image source={{ uri: cloudUser.avatarUrl }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarFallback]}>
+                    <Ionicons name="person" size={22} color={colors.muted} />
+                  </View>
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.accountName} numberOfLines={1}>
+                    {cloudUser?.name ?? uiStrings.profile.cloudSynced}
+                  </Text>
+                  {cloudUser?.email && (
+                    <Text style={styles.accountEmail} numberOfLines={1}>
+                      {cloudUser.email}
+                    </Text>
+                  )}
+                </View>
+              </View>
+              <Pressable testID="profile-logout" style={styles.secondaryBtn} onPress={logout}>
+                <Text style={styles.secondaryBtnText}>{uiStrings.profile.logout}</Text>
+              </Pressable>
+            </>
           ) : (
-            <Pressable testID="profile-login-google" style={styles.googleBtn} onPress={loginWithGoogle}>
-              <Ionicons name="logo-google" size={18} color={colors.surface} />
-              <Text style={styles.googleBtnText}>{uiStrings.profile.loginGoogle}</Text>
-            </Pressable>
+            <>
+              <Text style={styles.cardLabel}>{uiStrings.profile.localMode}</Text>
+              <Pressable testID="profile-login-google" style={styles.googleBtn} onPress={loginWithGoogle}>
+                <Ionicons name="logo-google" size={18} color={colors.surface} />
+                <Text style={styles.googleBtnText}>{uiStrings.profile.loginGoogle}</Text>
+              </Pressable>
+            </>
           )}
         </View>
 
@@ -70,6 +95,14 @@ export default function ProfileScreen() {
                   <Text style={styles.startBtnText}>{uiStrings.profile.weeklyProgramStartToday}</Text>
                 </Pressable>
               )}
+              <View style={{ height: spacing.md }} />
+              <WeeklyProgramCalendar
+                program={weeklyProgram}
+                onStartDay={(day) => {
+                  startWorkout(day.workout);
+                  router.push("/(tabs)/active");
+                }}
+              />
             </>
           ) : (
             <Text style={styles.cardMeta}>{uiStrings.profile.weeklyProgramNone}</Text>
@@ -79,12 +112,12 @@ export default function ProfileScreen() {
             {uiStrings.profile.weeklyProgramFrequency}
           </Text>
           <View style={styles.freqRow}>
-            {[2, 3, 4].map((f) => (
+            {FREQUENCIES.map((f) => (
               <Pressable
                 key={f}
                 testID={`generate-program-${f}`}
                 style={styles.freqBtn}
-                onPress={() => generateProgram(f as 2 | 3 | 4)}
+                onPress={() => generateProgram(f)}
               >
                 <Text style={styles.freqBtnText}>{f}x</Text>
               </Pressable>
@@ -116,6 +149,15 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   cardLabel: { color: colors.onSurface, fontSize: typography.lg, fontWeight: "700" },
   cardMeta: { color: colors.muted, fontSize: typography.base },
+  accountRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  avatar: { width: 44, height: 44, borderRadius: 22 },
+  avatarFallback: {
+    backgroundColor: colors.surfaceTertiary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  accountName: { color: colors.onSurface, fontSize: typography.base, fontWeight: "700" },
+  accountEmail: { color: colors.muted, fontSize: typography.sm, marginTop: 2 },
   secondaryBtn: {
     alignSelf: "flex-start",
     backgroundColor: colors.surfaceTertiary,
