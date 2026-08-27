@@ -45,6 +45,10 @@ export default function RootLayout() {
               name="builder"
               options={{ presentation: "modal", animation: "slide_from_bottom" }}
             />
+            <Stack.Screen
+              name="session/[id]"
+              options={{ presentation: "modal", animation: "slide_from_bottom" }}
+            />
           </Stack>
         </WorkoutProvider>
       </SafeAreaProvider>

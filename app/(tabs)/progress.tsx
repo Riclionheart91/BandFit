@@ -1,8 +1,8 @@
 import React, { useCallback, useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useWorkout } from "@/src/context/WorkoutContext";
 import { colors, radius, spacing, typography } from "@/src/theme";
 
@@ -24,6 +24,7 @@ function fmtDuration(s: number) {
 }
 
 export default function ProgressScreen() {
+  const router = useRouter();
   const { sessions, refresh } = useWorkout();
 
   useFocusEffect(
@@ -125,7 +126,15 @@ export default function ProgressScreen() {
           </View>
         ) : (
           sessions.slice(0, 20).map((s) => (
-            <View key={s.id} style={styles.histRow}>
+            <Pressable
+              key={s.id}
+              testID={`session-row-${s.id}`}
+              style={({ pressed }) => [
+                styles.histRow,
+                pressed && { opacity: 0.7 },
+              ]}
+              onPress={() => router.push(`/session/${s.id}`)}
+            >
               <View style={styles.histIcon}>
                 <Ionicons
                   name="fitness"
@@ -149,7 +158,13 @@ export default function ProgressScreen() {
                 </Text>
                 <Text style={styles.histKcal}>{s.calories} kcal</Text>
               </View>
-            </View>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={colors.muted}
+                style={{ marginLeft: spacing.sm }}
+              />
+            </Pressable>
           ))
         )}
         <View style={{ height: spacing.xxxl }} />
@@ -182,7 +197,7 @@ function Stat({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surface },
-  scroll: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl },
+  scroll: { paddingHorizontal: spacing.lg, paddingBottom: 140 },
   header: { paddingTop: spacing.md, paddingBottom: spacing.lg },
   title: {
     color: colors.onSurface,

@@ -6,6 +6,13 @@ const KEYS = {
   sessions: "@rb/sessions",
 };
 
+export type SessionExerciseLog = {
+  exerciseId: string;
+  name: string;
+  sets: number;
+  reps: number;
+};
+
 export type Session = {
   id: string;
   workoutId: string;
@@ -14,6 +21,7 @@ export type Session = {
   duration: number; // seconds
   heartRates: number[];
   calories: number;
+  exercises?: SessionExerciseLog[];
 };
 
 async function readJSON<T>(key: string, fallback: T): Promise<T> {
@@ -55,6 +63,13 @@ export const getSessions = (): Promise<Session[]> =>
 export async function saveSession(s: Session): Promise<Session[]> {
   const list = await getSessions();
   const next = [s, ...list].slice(0, 200);
+  await writeJSON(KEYS.sessions, next);
+  return next;
+}
+
+export async function deleteSession(id: string): Promise<Session[]> {
+  const list = await getSessions();
+  const next = list.filter((s) => s.id !== id);
   await writeJSON(KEYS.sessions, next);
   return next;
 }

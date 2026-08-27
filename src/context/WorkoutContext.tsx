@@ -23,6 +23,7 @@ import {
 import {
   getSessions,
   saveSession,
+  deleteSession,
   getCustomWorkouts,
   saveCustomWorkout,
   deleteCustomWorkout,
@@ -55,6 +56,7 @@ type Ctx = {
   completeSet: () => void;
   skipExercise: () => void;
   endWorkout: (rpe?: number) => Promise<void>;
+  cancelWorkout: () => void;
   // hr
   bpm: number | null;
   // sessions & customs
@@ -62,6 +64,7 @@ type Ctx = {
   customWorkouts: Workout[];
   addCustomWorkout: (w: Workout) => Promise<void>;
   removeCustomWorkout: (id: string) => Promise<void>;
+  removeSession: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
 
   // web additions
@@ -263,6 +266,16 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, []);
 
+  const cancelWorkout = useCallback(() => {
+    if (!engineRef.current) return;
+    engineRef.current.end();
+    stopTicker();
+    healthStop();
+    setActiveWorkout(null);
+    setSnapshot(null);
+    engineRef.current = null;
+  }, [stopTicker]);
+
   const endWorkout = useCallback(
     async (rpe?: number) => {
       if (!activeWorkout || !engineRef.current) return;
@@ -283,6 +296,12 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
         duration: snap.elapsed,
         heartRates: [...hrCollected.current],
         calories,
+        exercises: activeWorkout.exercises.map((e) => ({
+          exerciseId: e.exerciseId,
+          name: EXERCISES_BY_ID[e.exerciseId]?.name ?? e.exerciseId,
+          sets: e.sets,
+          reps: e.reps,
+        })),
       };
       await saveSession(session);
 
@@ -334,6 +353,11 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
     setCustomWorkouts(next);
   }, []);
 
+  const removeSession = useCallback(async (id: string) => {
+    const next = await deleteSession(id);
+    setSessions(next);
+  }, []);
+
   const loginWithGoogle = useCallback(async () => {
     await cloudSignInWithGoogle();
     setIsCloudMode(true);
@@ -354,11 +378,13 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
       completeSet,
       skipExercise,
       endWorkout,
+      cancelWorkout,
       bpm,
       sessions,
       customWorkouts,
       addCustomWorkout,
       removeCustomWorkout,
+      removeSession,
       refresh,
       disclaimerAccepted,
       acceptDisclaimer,
@@ -379,11 +405,13 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
       completeSet,
       skipExercise,
       endWorkout,
+      cancelWorkout,
       bpm,
       sessions,
       customWorkouts,
       addCustomWorkout,
       removeCustomWorkout,
+      removeSession,
       refresh,
       disclaimerAccepted,
       acceptDisclaimer,

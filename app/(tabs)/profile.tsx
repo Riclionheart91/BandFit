@@ -98,7 +98,7 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surface },
-  scroll: { padding: spacing.lg, paddingBottom: spacing.xxxl, gap: spacing.md },
+  scroll: { padding: spacing.lg, paddingBottom: 140, gap: spacing.md },
   title: {
     color: colors.onSurface,
     fontSize: typography.display,

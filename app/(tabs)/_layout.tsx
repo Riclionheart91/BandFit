@@ -3,21 +3,40 @@ import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Platform, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useWorkout } from "@/src/context/WorkoutContext";
 import { colors } from "@/src/theme";
 
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
+  const { activeWorkout } = useWorkout();
+
+  const floatingTabBar = {
+    position: "absolute" as const,
+    left: 16,
+    right: 16,
+    bottom: insets.bottom + 8,
+    height: 58,
+    borderRadius: 26,
+    borderTopWidth: 0,
+    paddingTop: 8,
+    backgroundColor:
+      Platform.OS === "ios" ? "transparent" : "rgba(28,28,30,0.96)",
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
+    overflow: "hidden" as const,
+  };
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.onSurface,
         tabBarInactiveTintColor: colors.muted,
-        tabBarStyle: {
-          position: "absolute",
-          backgroundColor:
-            Platform.OS === "ios" ? "transparent" : "rgba(0,0,0,0.92)",
-          borderTopColor: colors.border,
-        },
+        tabBarStyle: floatingTabBar,
         tabBarBackground: () =>
           Platform.OS === "ios" ? (
             <BlurView
@@ -29,11 +48,12 @@ export default function TabsLayout() {
             <View
               style={[
                 StyleSheet.absoluteFill,
-                { backgroundColor: "rgba(0,0,0,0.92)" },
+                { backgroundColor: "rgba(28,28,30,0.96)" },
               ]}
             />
           ),
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
+        tabBarItemStyle: { paddingTop: 2 },
       }}
     >
       <Tabs.Screen
@@ -58,7 +78,7 @@ export default function TabsLayout() {
         name="active"
         options={{
           title: "Allenamento",
-          tabBarStyle: { display: "none" },
+          tabBarStyle: activeWorkout ? { display: "none" } : floatingTabBar,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="barbell" size={size} color={color} />
           ),

@@ -15,6 +15,7 @@ create table if not exists sessions (
   duration integer not null default 0,
   "heartRates" jsonb not null default '[]',
   calories integer not null default 0,
+  exercises jsonb not null default '[]',
   created_at timestamptz not null default now()
 );
 

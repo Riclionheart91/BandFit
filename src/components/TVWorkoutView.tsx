@@ -2,12 +2,14 @@ import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, typography } from "@/src/theme";
+import { HeartRateDisplay } from "@/src/components/HeartRateDisplay";
 
 type Props = {
   exerciseName: string;
   nextExerciseName?: string;
   timerText: string;
   setText: string;
+  bpm: number | null;
   bandColor: string;
 };
 
@@ -16,6 +18,7 @@ export function TVWorkoutView({
   nextExerciseName,
   timerText,
   setText,
+  bpm,
   bandColor,
 }: Props) {
   return (
@@ -30,6 +33,7 @@ export function TVWorkoutView({
         <View style={styles.right}>
           <Text style={styles.label}>SERIE</Text>
           <Text style={styles.setText}>{setText}</Text>
+          <HeartRateDisplay bpm={bpm} />
         </View>
       </View>
 
