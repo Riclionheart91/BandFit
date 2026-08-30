@@ -54,6 +54,19 @@ export const EXERCISES: Exercise[] = [
   { id: "lunge", nameEn: "Lunge", name: "Affondi", category: "lower", band: "red", targetMuscles: ["Gambe", "Glutei"], movementType: "push", level: "Beginner", icon: "walk" },
   { id: "monster-walk", nameEn: "Monster Walk", name: "Monster Walk", category: "lower", band: "red", targetMuscles: ["Glutei"], movementType: "stability", level: "Beginner", icon: "walk" },
   { id: "calf-ext", nameEn: "Calf Extension", name: "Estensione Polpacci", category: "lower", band: "yellow", targetMuscles: ["Polpacci"], movementType: "push", level: "Beginner", icon: "walk" },
+  { id: "squat", nameEn: "Band Squat", name: "Squat con Elastico", category: "lower", band: "red", targetMuscles: ["Gambe", "Glutei"], movementType: "push", level: "Beginner", icon: "walk" },
+  { id: "stiff-leg-deadlift", nameEn: "Straight Leg Deadlift", name: "Stacco Gambe Tese", category: "lower", band: "red", targetMuscles: ["Femorali", "Glutei", "Schiena Bassa"], movementType: "pull", level: "Intermediate", icon: "walk" },
+  { id: "leg-extension", nameEn: "Leg Extension", name: "Estensione Quadricipiti", category: "lower", band: "yellow", targetMuscles: ["Quadricipiti"], movementType: "push", level: "Beginner", icon: "walk" },
+  { id: "reverse-calf-raise", nameEn: "Reverse Calf Raise", name: "Estensione Tibiale", category: "lower", band: "yellow", targetMuscles: ["Tibiale Anteriore"], movementType: "pull", level: "Beginner", icon: "walk" },
+  { id: "hip-thrust", nameEn: "Hip Thrust", name: "Hip Thrust in Ginocchio", category: "lower", band: "red", targetMuscles: ["Glutei"], movementType: "push", level: "Beginner", icon: "walk" },
+
+  // Nuovi — Parte Superiore / Core (analisi lacune libreria)
+  { id: "standing-row", nameEn: "One Arm Standing Row", name: "Rematore in Piedi", category: "upper", band: "red", targetMuscles: ["Dorsali", "Schiena Alta", "Bicipiti"], movementType: "pull", level: "Beginner", icon: "barbell" },
+  { id: "shrug", nameEn: "Shrug", name: "Shrug Trapezi", category: "upper", band: "black", targetMuscles: ["Trapezi"], movementType: "pull", level: "Beginner", icon: "barbell" },
+  { id: "wrist-curl", nameEn: "Wrist Curl", name: "Curl Polso", category: "upper", band: "yellow", targetMuscles: ["Avambracci"], movementType: "pull", level: "Beginner", icon: "barbell" },
+  { id: "reverse-wrist-curl", nameEn: "Reverse Wrist Curl", name: "Curl Polso Inverso", category: "upper", band: "yellow", targetMuscles: ["Avambracci"], movementType: "push", level: "Beginner", icon: "barbell" },
+  { id: "y-raise", nameEn: "Y Raise", name: "Alzate a Y", category: "upper", band: "yellow", targetMuscles: ["Spalle", "Trapezi Bassi"], movementType: "push", level: "Beginner", icon: "barbell" },
+  { id: "pallof-press", nameEn: "Horizontal Pallof Press", name: "Pallof Press Orizzontale", category: "core", band: "red", targetMuscles: ["Core", "Obliqui"], movementType: "stability", level: "Intermediate", icon: "flame" },
 ];
 
 export const EXERCISES_BY_ID: Record<string, Exercise> = EXERCISES.reduce(

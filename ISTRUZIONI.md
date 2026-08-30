@@ -1,58 +1,53 @@
-# Patch — GIF esercizi reali (hotlink, zero storage) + fix precedenti
+# Patch — 11 nuovi esercizi (analisi lacune libreria)
 
 ## File inclusi
 
 ```
-migration_exercise_gifs.sql          NUOVO — lancia questo su Supabase
-src/services/exerciseGifs.web.ts     NUOVO — recupera le gif da Supabase, cache locale 7gg
-src/services/exerciseGifs.ts         NUOVO — stub nativo
-src/services/cloudStorage.ts         aggiunto getClient() allo stub nativo (richiesto dal punto sopra)
-src/components/ExerciseCard.tsx      mostra la gif al posto dell'icona quando disponibile
-app/(tabs)/library.tsx               carica le gif e le passa alle card (include anche il fix FAB della patch precedente)
-app/(tabs)/active.tsx                mostra la gif grande dell'esercizio corrente, la nasconde a riposo se Risparmio Batteria è attivo
+src/data/exercises.ts             sostituisce il file — 30 esercizi originali invariati + 11 nuovi
+migration_new_exercises_gifs.sql  GIF per i nuovi esercizi (da lanciare DOPO la patch3, che crea la tabella)
 ```
 
-Build validata: `npx tsc --noEmit` zero errori, `npx expo export -p web` riuscita, 14 rotte generate.
+Build validata: `npx tsc --noEmit` zero errori, `npx expo export -p web` riuscita, 14 rotte.
+
+**Prerequisito**: questa patch presuppone che tu abbia già applicato la **patch3** (quella con `migration_exercise_gifs.sql` che crea la tabella `exercise_gifs`). Se non l'hai ancora fatto, applicala prima.
 
 ---
 
-## Come ho trovato le GIF (metodo, non solo risultato)
+## I nuovi esercizi
 
-Ho cercato database di esercizi gratuiti, hotlinkabili, senza costi di storage. La scelta migliore: **[ExerciseGymGifsDB](https://github.com/JahelCuadrado/ExerciseGymGifsDB)** — 1323 esercizi, serviti gratis via jsDelivr CDN direttamente da GitHub, nessuna chiave API, nessun limite di richieste, categoria attrezzatura `band` dedicata.
+Ho analizzato tutti i 62 esercizi con elastici disponibili nel database GIF e confrontato con i tuoi 30, cercando **lacune reali** — pattern di movimento o gruppi muscolari completamente assenti, non semplici doppioni.
 
-Ho scaricato i dati reali (non indovinato nulla) e verificato **uno per uno** che i file GIF esistano davvero (richiesta HTTP con risposta 200 per tutti e 28):
+| id | Nome | Perché colma una lacuna |
+|---|---|---|
+| `squat` | Squat con Elastico | Zero squat base nella libreria (avevi affondi, kickback, abduzione, ma non il movimento fondamentale) |
+| `stiff-leg-deadlift` | Stacco Gambe Tese | Zero pattern hip-hinge/stacco — catena posteriore mai coperta |
+| `standing-row` | Rematore in Piedi | Zero tirate orizzontali per la schiena (avevi solo pulldown verticali) |
+| `shrug` | Shrug Trapezi | Zero esercizi dedicati ai trapezi |
+| `wrist-curl` | Curl Polso | Zero esercizi per avambracci — gruppo muscolare intero mancante |
+| `reverse-wrist-curl` | Curl Polso Inverso | Completa la coppia con wrist-curl (flessione + estensione) |
+| `leg-extension` | Estensione Quadricipiti | Zero isolamento quadricipiti (solo movimenti compound) |
+| `pallof-press` | Pallof Press Orizzontale | Il tuo `woodchopper` è verticale, questo è anti-rotazione orizzontale — core stability diverso |
+| `y-raise` | Alzate a Y | Diverso da alzate frontali/laterali, lavora stabilità scapolare |
+| `reverse-calf-raise` | Estensione Tibiale | Il tuo `calf-ext` lavora solo plantarflessione, questo bilancia con la dorsiflessione |
+| `hip-thrust` | Hip Thrust in Ginocchio | Isolamento glutei puro, diverso da kickback/abduzione |
 
-- **22 esercizi** hanno un match diretto con variante a elastico (es. `Band Bench Press`, `Band Front Raise`, `Band Bicycle Crunch`)
-- **6 esercizi** non avevano un equivalente a elastico nel database, ho usato il miglior movimento equivalente con cavo o corpo libero (es. `chest-fly` → `Cable Standing Fly`, `monster-walk` → `Monster Walk` a corpo libero)
-- **2 esercizi senza alcun match utile**: `thruster` (movimento combinato squat+spinta, nessuna voce corrispondente nel database) e `hip-flexion` (solo stretching trovato, nessun esercizio di forza equivalente) — questi restano senza GIF, mostrano l'icona come prima
-
-## Nota legale sulla fonte
-
-L'autore del database dichiara esplicitamente di aver raccolto le immagini da internet **senza rivendicarne i diritti d'autore**. È una zona grigia comune a molte librerie gratuite di questo tipo (stessa situazione di ExerciseDB, la più usata del settore). Va bene per un progetto personale; se in futuro vuoi pubblicare l'app commercialmente, andrebbe sostituita con una fonte a licenza chiara (es. un pacchetto a pagamento con licenza esplicita, o GIF create ad hoc).
-
----
-
-## Come si aggiornano in futuro
-
-Le GIF **non sono nel codice** — sono in una tabella Supabase (`exercise_gifs`), l'app le scarica una volta e le mette in cache locale per 7 giorni. Per cambiare/aggiungere una GIF basta modificare la riga nella tabella su Supabase, senza toccare il codice o ripubblicare l'app.
+Tutti verificati con richiesta HTTP reale (200 OK) prima di essere inclusi — nessuna GIF indovinata o non esistente.
 
 ---
 
 ## Come applicare
 
-### 1. Lancia la migrazione SQL
-**Supabase → SQL Editor → New query**, incolla tutto `migration_exercise_gifs.sql` → **Run**.
-
-Crea la tabella `exercise_gifs` (pubblica in lettura, come le GIF stesse) e inserisce le 28 righe verificate.
-
-### 2. Sostituisci i file
-Copia i 7 file di questo pacchetto nei rispettivi percorsi. Due sono nuovi (`exerciseGifs.ts`, `exerciseGifs.web.ts`), gli altri sono sostituzioni.
-
-### 3. Pubblica
 ```bash
 cd /Users/riccardolilliu/Documents/97.webapp/BandFit
+```
+
+1. Sostituisci `src/data/exercises.ts` con quello di questo pacchetto
+2. **Supabase → SQL Editor**: incolla `migration_new_exercises_gifs.sql` → Run
+3. Pubblica:
+
+```bash
 git add .
-git commit -m "feat: gif esercizi reali via hotlink, zero storage"
+git commit -m "feat: 11 nuovi esercizi (squat, stacco, rematore, avambracci, trapezi...)"
 git push
 
 npx expo export -p web
@@ -60,7 +55,4 @@ touch dist/.nojekyll
 npx gh-pages -d dist -b gh-pages --dotfiles
 ```
 
-### 4. Testa
-- **Libreria**: le card mostrano la GIF al posto dell'icona (dove disponibile)
-- **Allenamento attivo**: GIF grande sopra il nome dell'esercizio
-- **Risparmio Batteria attivo** (Profilo): durante il riposo tra le serie, la GIF sparisce (risparmio dati/batteria reale, non solo un'etichetta)
+Vai in **Libreria** dopo il deploy: dovresti vedere 41 esercizi totali, gli 11 nuovi con GIF già funzionante.
