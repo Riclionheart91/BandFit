@@ -1,10 +1,14 @@
-import type { User } from "@supabase/supabase-js";
+import type { User, SupabaseClient } from "@supabase/supabase-js";
 import type { Session } from "@/src/services/storage";
 import type { Workout } from "@/src/data/workouts";
 import type { WeeklyProgram } from "@/src/services/periodization";
 
 // Cloud sync is a web-exclusive feature (Metro picks cloudStorage.web.ts on web).
 // This native no-op keeps the module resolvable for iOS/Android builds and for tsc.
+
+export function getClient(): SupabaseClient {
+  throw new Error("Supabase client is only available on web in this build");
+}
 
 export async function getCurrentUser(): Promise<User | null> {
   return null;

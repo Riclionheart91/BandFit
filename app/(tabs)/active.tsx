@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, StyleSheet, Pressable, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -9,6 +9,7 @@ import { Timer } from "@/src/components/Timer";
 import { MobileWorkoutController } from "@/src/components/MobileWorkoutController";
 import { TVWorkoutView } from "@/src/components/TVWorkoutView";
 import { subscribeExternalDisplay } from "@/src/services/externalDisplay";
+import { getExerciseGifMap } from "@/src/services/exerciseGifs";
 import { EXERCISES_BY_ID } from "@/src/data/exercises";
 import { PREDEFINED_WORKOUTS } from "@/src/data/workouts";
 import { uiStrings } from "@/src/config";
@@ -39,10 +40,16 @@ export default function ActiveWorkoutScreen() {
     endWorkout,
     cancelWorkout,
     weeklyProgram,
+    batterySaver,
   } = useWorkout();
   const [external, setExternal] = useState(false);
   const [rpeStep, setRpeStep] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [gifs, setGifs] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    getExerciseGifMap().then(setGifs).catch(() => {});
+  }, []);
 
   const isAiSession =
     !!activeWorkout &&
@@ -156,6 +163,8 @@ export default function ActiveWorkoutScreen() {
       ? "COMPLETATO"
       : "ATTIVO";
   const setText = `${snapshot.setIndex + 1} / ${currentEx.sets} · ${currentEx.reps} reps`;
+  const gifUrl = ex ? gifs[ex.id] : undefined;
+  const showGif = !!gifUrl && !(isRest && batterySaver);
 
   const header = (
     <View style={styles.topRow}>
@@ -244,6 +253,13 @@ export default function ActiveWorkoutScreen() {
       {header}
 
       <View style={styles.center}>
+        {showGif && (
+          <Image
+            source={{ uri: gifUrl }}
+            style={styles.exerciseGif}
+            resizeMode="cover"
+          />
+        )}
         <Text style={styles.exerciseName} numberOfLines={2}>
           {ex?.name ?? "—"}
         </Text>
@@ -312,6 +328,13 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     textAlign: "center",
     letterSpacing: -0.5,
+  },
+  exerciseGif: {
+    width: 180,
+    height: 180,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceSecondary,
+    marginBottom: spacing.sm,
   },
   setInfo: { color: colors.muted, fontSize: typography.base, letterSpacing: 1 },
   nextBox: {

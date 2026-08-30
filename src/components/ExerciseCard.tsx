@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
   bandHex,
@@ -16,12 +16,14 @@ type Props = {
   exercise: Exercise;
   onPress?: () => void;
   rightSlot?: React.ReactNode;
+  gifUrl?: string;
 };
 
 export const ExerciseCard = React.memo(function ExerciseCard({
   exercise,
   onPress,
   rightSlot,
+  gifUrl,
 }: Props) {
   const band = bandHex[exercise.band];
   return (
@@ -31,7 +33,11 @@ export const ExerciseCard = React.memo(function ExerciseCard({
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.7 }]}
     >
       <View style={[styles.iconWrap, { borderColor: band }]}>
-        <Ionicons name={exercise.icon as any} size={24} color={band} />
+        {gifUrl ? (
+          <Image source={{ uri: gifUrl }} style={styles.thumb} resizeMode="cover" />
+        ) : (
+          <Ionicons name={exercise.icon as any} size={24} color={band} />
+        )}
       </View>
       <View style={styles.body}>
         <Text style={styles.name} numberOfLines={1}>
@@ -77,7 +83,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.surface,
+    overflow: "hidden",
   },
+  thumb: { width: "100%", height: "100%" },
   body: { flex: 1, gap: 4 },
   name: {
     fontSize: typography.lg,

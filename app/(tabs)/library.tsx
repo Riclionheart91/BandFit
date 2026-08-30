@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { ExerciseCard } from "@/src/components/ExerciseCard";
+import { getExerciseGifMap } from "@/src/services/exerciseGifs";
 import { EXERCISES } from "@/src/data/exercises";
 import {
   bandHex,
@@ -47,6 +48,11 @@ export default function LibraryScreen() {
   const insets = useSafeAreaInsets();
   const [cat, setCat] = useState<Filter>("all");
   const [band, setBand] = useState<BandFilter>("all");
+  const [gifs, setGifs] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    getExerciseGifMap().then(setGifs).catch(() => {});
+  }, []);
 
   const data = useMemo(
     () =>
@@ -116,7 +122,9 @@ export default function LibraryScreen() {
       <FlatList
         data={data}
         keyExtractor={(e) => e.id}
-        renderItem={({ item }) => <ExerciseCard exercise={item} />}
+        renderItem={({ item }) => (
+          <ExerciseCard exercise={item} gifUrl={gifs[item.id]} />
+        )}
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
         ListEmptyComponent={
