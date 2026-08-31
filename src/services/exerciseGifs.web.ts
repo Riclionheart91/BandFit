@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getClient } from "@/src/services/cloudStorage";
 
 const CACHE_KEY = "@rb/exercise_gifs_cache_v1";
-const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days, this data barely changes
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
 type GifRow = { exercise_id: string; gif_url: string };
 type GifMap = Record<string, string>;
@@ -43,5 +43,16 @@ export async function getExerciseGifMap(): Promise<GifMap> {
       JSON.stringify({ map, fetchedAt: Date.now() })
     ).catch(() => {});
   }
+  return map;
+}
+
+/** Bypasses memory and disk cache, always hits Supabase, then refreshes both caches. */
+export async function refreshExerciseGifMap(): Promise<GifMap> {
+  const map = await fetchFromSupabase();
+  memoryCache = map;
+  await AsyncStorage.setItem(
+    CACHE_KEY,
+    JSON.stringify({ map, fetchedAt: Date.now() })
+  ).catch(() => {});
   return map;
 }

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, StyleSheet, Pressable, Switch, ScrollView, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { useWorkout } from "@/src/context/WorkoutContext";
 import { todaysSession } from "@/src/services/periodization";
 import { WeeklyProgramCalendar } from "@/src/components/WeeklyProgramCalendar";
+import { refreshExerciseGifMap } from "@/src/services/exerciseGifs";
 import { uiStrings } from "@/src/config";
 import { colors, radius, spacing, typography } from "@/src/theme";
 
@@ -26,6 +27,18 @@ export default function ProfileScreen() {
   } = useWorkout();
 
   const today = todaysSession(weeklyProgram);
+  const [refreshState, setRefreshState] = useState<"idle" | "loading" | "done">("idle");
+
+  const handleRefreshGifs = async () => {
+    setRefreshState("loading");
+    try {
+      await refreshExerciseGifMap();
+      setRefreshState("done");
+      setTimeout(() => setRefreshState("idle"), 2000);
+    } catch {
+      setRefreshState("idle");
+    }
+  };
 
   const startToday = () => {
     if (!today) return;
@@ -124,6 +137,26 @@ export default function ProfileScreen() {
             ))}
           </View>
         </View>
+
+        <Pressable
+          testID="refresh-gifs"
+          onPress={handleRefreshGifs}
+          disabled={refreshState === "loading"}
+          style={styles.refreshRow}
+        >
+          <Ionicons
+            name={refreshState === "done" ? "checkmark-circle" : "refresh"}
+            size={14}
+            color={refreshState === "done" ? colors.brand : colors.muted}
+          />
+          <Text style={styles.refreshText}>
+            {refreshState === "loading"
+              ? "Aggiornamento in corso..."
+              : refreshState === "done"
+              ? "Gif aggiornate"
+              : "Aggiorna gif esercizi"}
+          </Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -196,4 +229,12 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   startBtnText: { color: colors.surface, fontWeight: "800", fontSize: typography.base },
+  refreshRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: spacing.md,
+  },
+  refreshText: { color: colors.muted, fontSize: typography.sm },
 });
