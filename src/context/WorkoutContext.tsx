@@ -31,7 +31,13 @@ import {
 } from "@/src/services/storage";
 import { logWorkoutToCalendar } from "@/src/services/calendar";
 import { EXERCISES_BY_ID } from "@/src/data/exercises";
-import { audioCoach, legal } from "@/src/config";
+import { audioCoach, legal, aiEngine } from "@/src/config";
+import {
+  DEFAULT_SETTINGS,
+  DEFAULT_PERSONAL_PROFILE,
+  type UserSettings,
+  type PersonalProfile,
+} from "@/src/services/userSettings";
 import {
   generateWeeklyProgram,
   applyRpeAdaptation,
@@ -44,6 +50,8 @@ import {
   syncSessionsToCloud,
   syncCustomWorkoutsToCloud,
   syncWeeklyProgramToCloud,
+  syncPersonalProfileToCloud,
+  pullPersonalProfile,
 } from "@/src/services/cloudStorage";
 
 type Ctx = {
@@ -78,11 +86,17 @@ type Ctx = {
   cloudUser: { email: string | null; name: string | null; avatarUrl: string | null } | null;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
+
+  settings: UserSettings;
+  updateSettings: (partial: Partial<UserSettings>) => Promise<void>;
+  personalProfile: PersonalProfile;
+  updatePersonalProfile: (partial: Partial<PersonalProfile>) => Promise<void>;
 };
 
 const WorkoutContext = createContext<Ctx | null>(null);
 
-function speak(text: string) {
+function speak(text: string, enabled: boolean) {
+  if (!enabled) return;
   if (Platform.OS !== "web" || typeof window === "undefined") return;
   const synth = (window as any).speechSynthesis;
   if (!synth) return;
@@ -118,6 +132,13 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
     name: string | null;
     avatarUrl: string | null;
   } | null>(null);
+  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+  const [personalProfile, setPersonalProfile] = useState<PersonalProfile>(DEFAULT_PERSONAL_PROFILE);
+
+  const settingsRef = useRef<UserSettings>(DEFAULT_SETTINGS);
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
   const engineRef = useRef<WorkoutEngine | null>(null);
   const tickerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -147,10 +168,34 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
         } catch {}
       }
     });
+    AsyncStorage.getItem(legal.storageKeys.settings).then((v) => {
+      if (v) {
+        try {
+          setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(v) });
+        } catch {}
+      }
+    });
+    AsyncStorage.getItem(legal.storageKeys.personalProfile).then((v) => {
+      if (v) {
+        try {
+          setPersonalProfile({ ...DEFAULT_PERSONAL_PROFILE, ...JSON.parse(v) });
+        } catch {}
+      }
+    });
     getCurrentUser()
-      .then((u: Awaited<ReturnType<typeof getCurrentUser>>) => {
+      .then(async (u: Awaited<ReturnType<typeof getCurrentUser>>) => {
         setIsCloudMode(!!u);
         setCloudUser(extractCloudUser(u));
+        if (u) {
+          const cloudProfile = await pullPersonalProfile(u.id).catch(() => null);
+          if (cloudProfile) {
+            setPersonalProfile(cloudProfile);
+            AsyncStorage.setItem(
+              legal.storageKeys.personalProfile,
+              JSON.stringify(cloudProfile)
+            ).catch(() => {});
+          }
+        }
       })
       .catch(() => {});
   }, [refresh]);
@@ -165,6 +210,27 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
     setBatterySaverState(v);
   }, []);
 
+  const updateSettings = useCallback(async (partial: Partial<UserSettings>) => {
+    setSettings((prev) => {
+      const next = { ...prev, ...partial };
+      AsyncStorage.setItem(legal.storageKeys.settings, JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  const updatePersonalProfile = useCallback(async (partial: Partial<PersonalProfile>) => {
+    let nextValue: PersonalProfile = DEFAULT_PERSONAL_PROFILE;
+    setPersonalProfile((prev) => {
+      nextValue = { ...prev, ...partial };
+      return nextValue;
+    });
+    await AsyncStorage.setItem(legal.storageKeys.personalProfile, JSON.stringify(nextValue)).catch(
+      () => {}
+    );
+    const u = await getCurrentUser().catch(() => null);
+    if (u) syncPersonalProfileToCloud(u.id, nextValue).catch(() => {});
+  }, []);
+
   const persistProgram = useCallback(async (p: WeeklyProgram) => {
     setWeeklyProgram({ ...p });
     await AsyncStorage.setItem(legal.storageKeys.weeklyProgram, JSON.stringify(p));
@@ -172,7 +238,11 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
 
   const generateProgram = useCallback(
     async (frequency: 2 | 3 | 4 | 5) => {
-      const p = generateWeeklyProgram(frequency);
+      const p = generateWeeklyProgram(
+        frequency,
+        settingsRef.current.aiExercisesPerSession,
+        settingsRef.current.defaultRestSeconds
+      );
       await persistProgram(p);
     },
     [persistProgram]
@@ -220,26 +290,36 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
 
   const handleSnapshot = useCallback((s: EngineSnapshot) => {
     setSnapshot(s);
+    const audioOn = settingsRef.current.audioCoachEnabled;
 
     if (s.exerciseIndex !== lastExerciseIndex.current && s.currentExercise) {
       lastExerciseIndex.current = s.exerciseIndex;
       const ex = EXERCISES_BY_ID[s.currentExercise.exerciseId];
-      if (ex) speak(audioCoach.phrases.exerciseChange(ex.name));
+      if (ex) speak(audioCoach.phrases.exerciseChange(ex.name), audioOn);
     }
 
     if (s.state !== lastEngineState.current) {
       if (s.state === "active" && lastEngineState.current === "rest") {
-        speak(audioCoach.phrases.restEnd);
+        speak(audioCoach.phrases.restEnd, audioOn);
       } else if (s.state === "active") {
-        speak(audioCoach.phrases.setStart);
+        speak(audioCoach.phrases.setStart, audioOn);
       } else if (s.state === "rest") {
-        speak(audioCoach.phrases.restStart);
+        speak(audioCoach.phrases.restStart, audioOn);
       } else if (s.state === "done") {
-        speak(audioCoach.phrases.workoutDone);
+        speak(audioCoach.phrases.workoutDone, audioOn);
       }
       lastEngineState.current = s.state;
     }
   }, []);
+
+  const haptic = {
+    notify: (type: Haptics.NotificationFeedbackType) => {
+      if (settingsRef.current.hapticsEnabled) Haptics.notificationAsync(type);
+    },
+    impact: (style: Haptics.ImpactFeedbackStyle) => {
+      if (settingsRef.current.hapticsEnabled) Haptics.impactAsync(style);
+    },
+  };
 
   const startWorkout = useCallback(
     (w: Workout) => {
@@ -249,10 +329,10 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
       const engine = new WorkoutEngine(w, {
         onSnapshot: handleSnapshot,
         onSetComplete: () => {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          haptic.notify(Haptics.NotificationFeedbackType.Success);
         },
         onWorkoutDone: () => {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          haptic.notify(Haptics.NotificationFeedbackType.Success);
           stopTicker();
         },
       });
@@ -261,15 +341,15 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
       engine.start();
       startTicker();
       healthStart();
-      speak(audioCoach.phrases.workoutStart);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      speak(audioCoach.phrases.workoutStart, settingsRef.current.audioCoachEnabled);
+      haptic.notify(Haptics.NotificationFeedbackType.Success);
     },
     [startTicker, stopTicker, handleSnapshot]
   );
 
   const pauseWorkout = useCallback(() => {
     engineRef.current?.pause();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptic.impact(Haptics.ImpactFeedbackStyle.Medium);
   }, []);
 
   const resumeWorkout = useCallback(() => {
@@ -282,7 +362,7 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
 
   const skipExercise = useCallback(() => {
     engineRef.current?.skipExercise();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptic.impact(Haptics.ImpactFeedbackStyle.Light);
   }, []);
 
   const cancelWorkout = useCallback(() => {
@@ -302,11 +382,14 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
       engineRef.current.end();
       stopTicker();
       healthStop();
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      haptic.impact(Haptics.ImpactFeedbackStyle.Heavy);
 
       const now = new Date();
       const start = new Date(now.getTime() - snap.elapsed * 1000);
-      const calories = Math.max(1, Math.round((snap.elapsed / 60) * 6));
+      const weightKg = personalProfile.weightKg;
+      const calories = weightKg
+        ? Math.max(1, Math.round(aiEngine.caloriesMET * weightKg * (snap.elapsed / 3600)))
+        : Math.max(1, Math.round((snap.elapsed / 60) * 6));
       const session: Session = {
         id: `s-${Date.now()}`,
         workoutId: activeWorkout.id,
@@ -348,7 +431,7 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
       setSnapshot(null);
       engineRef.current = null;
     },
-    [activeWorkout, refresh, stopTicker, weeklyProgram, persistProgram]
+    [activeWorkout, refresh, stopTicker, weeklyProgram, persistProgram, personalProfile]
   );
 
   // Subscribe to BPM
@@ -416,6 +499,10 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
       cloudUser,
       loginWithGoogle,
       logout,
+      settings,
+      updateSettings,
+      personalProfile,
+      updatePersonalProfile,
     }),
     [
       activeWorkout,
@@ -444,6 +531,10 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
       cloudUser,
       loginWithGoogle,
       logout,
+      settings,
+      updateSettings,
+      personalProfile,
+      updatePersonalProfile,
     ]
   );
 

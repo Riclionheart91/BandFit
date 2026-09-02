@@ -88,6 +88,28 @@ export default function ProfileScreen() {
           )}
         </View>
 
+        <View style={styles.card}>
+          <Pressable
+            testID="open-personal-profile"
+            style={styles.navRow}
+            onPress={() => router.push("/personal-profile")}
+          >
+            <Ionicons name="person-outline" size={20} color={colors.onSurface} />
+            <Text style={styles.navRowText}>{uiStrings.profile.personalProfileLink}</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+          </Pressable>
+          <View style={styles.divider} />
+          <Pressable
+            testID="open-settings"
+            style={styles.navRow}
+            onPress={() => router.push("/settings")}
+          >
+            <Ionicons name="settings-outline" size={20} color={colors.onSurface} />
+            <Text style={styles.navRowText}>{uiStrings.profile.settingsLink}</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+          </Pressable>
+        </View>
+
         <View style={[styles.card, styles.row]}>
           <Text style={styles.cardLabel}>{uiStrings.profile.batterySaver}</Text>
           <Switch testID="profile-battery-saver" value={batterySaver} onValueChange={setBatterySaver} />
@@ -237,4 +259,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   refreshText: { color: colors.muted, fontSize: typography.sm },
+  navRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  navRowText: { flex: 1, color: colors.onSurface, fontSize: typography.base, fontWeight: "600" },
+  divider: { height: 1, backgroundColor: colors.surfaceTertiary, marginVertical: spacing.sm },
 });

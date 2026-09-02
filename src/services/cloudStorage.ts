@@ -2,6 +2,7 @@ import type { User, SupabaseClient } from "@supabase/supabase-js";
 import type { Session } from "@/src/services/storage";
 import type { Workout } from "@/src/data/workouts";
 import type { WeeklyProgram } from "@/src/services/periodization";
+import type { PersonalProfile } from "@/src/services/userSettings";
 
 // Cloud sync is a web-exclusive feature (Metro picks cloudStorage.web.ts on web).
 // This native no-op keeps the module resolvable for iOS/Android builds and for tsc.
@@ -23,6 +24,12 @@ export async function syncSessionsToCloud(_userId: string, _sessions: Session[])
 export async function syncCustomWorkoutsToCloud(_userId: string, _workouts: Workout[]): Promise<void> {}
 
 export async function syncWeeklyProgramToCloud(_userId: string, _program: WeeklyProgram): Promise<void> {}
+
+export async function syncPersonalProfileToCloud(_userId: string, _profile: PersonalProfile): Promise<void> {}
+
+export async function pullPersonalProfile(_userId: string): Promise<PersonalProfile | null> {
+  return null;
+}
 
 export async function pullCloudData(_userId: string) {
   return { sessions: [] as Session[], customWorkouts: [] as Workout[], weeklyProgram: null as WeeklyProgram | null };

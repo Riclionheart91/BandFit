@@ -22,7 +22,7 @@ export type WeeklyProgram = {
   days: DaySession[];
 };
 
-function pickExercises(split: Category, count: number, usedIds: Set<string>): WorkoutExercise[] {
+function pickExercises(split: Category, count: number, usedIds: Set<string>, restSeconds: number): WorkoutExercise[] {
   const pool = EXERCISES.filter(
     (e) => e.category === split || (split === "core" && e.movementType === "core")
   );
@@ -34,15 +34,22 @@ function pickExercises(split: Category, count: number, usedIds: Set<string>): Wo
     exerciseId: e.id,
     sets: 3,
     reps: 12,
-    rest: aiEngine.rest.base,
+    rest: restSeconds,
   }));
 }
 
-function buildWorkout(split: Category, week: number, isDeload: boolean, usedIds: Set<string>): Workout {
-  let exercises = pickExercises(split, aiEngine.exercisesPerSession, usedIds);
+function buildWorkout(
+  split: Category,
+  week: number,
+  isDeload: boolean,
+  usedIds: Set<string>,
+  exercisesPerSession: number,
+  restSeconds: number
+): Workout {
+  let exercises = pickExercises(split, exercisesPerSession, usedIds, restSeconds);
 
-  if (exercises.length < aiEngine.exercisesPerSession) {
-    const deficit = aiEngine.exercisesPerSession - exercises.length;
+  if (exercises.length < exercisesPerSession) {
+    const deficit = exercisesPerSession - exercises.length;
     const already = new Set(exercises.map((e) => e.exerciseId));
     const variants = exercises
       .filter((e) => !already.has(`${e.exerciseId}-iso`))
@@ -72,7 +79,11 @@ function buildWorkout(split: Category, week: number, isDeload: boolean, usedIds:
   };
 }
 
-export function generateWeeklyProgram(frequency: 2 | 3 | 4 | 5): WeeklyProgram {
+export function generateWeeklyProgram(
+  frequency: 2 | 3 | 4 | 5,
+  exercisesPerSession: number = aiEngine.exercisesPerSession,
+  restSeconds: number = aiEngine.rest.base
+): WeeklyProgram {
   const splitOrder = aiEngine.frequencyToSplit[frequency] as Category[];
   const days: DaySession[] = [];
   const usedIds = new Set<string>();
@@ -88,7 +99,7 @@ export function generateWeeklyProgram(frequency: 2 | 3 | 4 | 5): WeeklyProgram {
         week,
         dayIndex,
         split,
-        workout: buildWorkout(split, week, isDeload, usedIds),
+        workout: buildWorkout(split, week, isDeload, usedIds, exercisesPerSession, restSeconds),
         isDeload,
         completed: false,
         rpe: null,

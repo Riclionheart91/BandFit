@@ -3,6 +3,7 @@ import { supabase as supabaseCfg, legal } from "@/src/config";
 import type { Session } from "@/src/services/storage";
 import type { Workout } from "@/src/data/workouts";
 import type { WeeklyProgram } from "@/src/services/periodization";
+import type { PersonalProfile } from "@/src/services/userSettings";
 
 let client: SupabaseClient | null = null;
 
@@ -44,6 +45,40 @@ export async function syncWeeklyProgramToCloud(userId: string, program: WeeklyPr
   await getClient()
     .from(supabaseCfg.tables.weeklyPrograms)
     .upsert({ ...program, user_id: userId }, { onConflict: "id" });
+}
+
+export async function syncPersonalProfileToCloud(userId: string, profile: PersonalProfile): Promise<void> {
+  await getClient()
+    .from(supabaseCfg.tables.personalProfiles)
+    .upsert(
+      {
+        user_id: userId,
+        name: profile.name,
+        age: profile.age,
+        weight_kg: profile.weightKg,
+        height_cm: profile.heightCm,
+        goal: profile.goal,
+        level: profile.level,
+      },
+      { onConflict: "user_id" }
+    );
+}
+
+export async function pullPersonalProfile(userId: string): Promise<PersonalProfile | null> {
+  const { data } = await getClient()
+    .from(supabaseCfg.tables.personalProfiles)
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    name: data.name ?? "",
+    age: data.age ?? null,
+    weightKg: data.weight_kg ?? null,
+    heightCm: data.height_cm ?? null,
+    goal: data.goal ?? null,
+    level: data.level ?? null,
+  };
 }
 
 export async function pullCloudData(userId: string) {
