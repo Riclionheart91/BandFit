@@ -15,6 +15,8 @@ import { PREDEFINED_WORKOUTS } from "@/src/data/workouts";
 import { uiStrings } from "@/src/config";
 import {
   bandHex,
+  bandLabel,
+  type BandColor,
   colors,
   radius,
   spacing,
@@ -39,21 +41,30 @@ export default function ActiveWorkoutScreen() {
     skipExercise,
     endWorkout,
     cancelWorkout,
-    weeklyProgram,
     batterySaver,
+    settings,
   } = useWorkout();
   const [external, setExternal] = useState(false);
   const [rpeStep, setRpeStep] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [gifs, setGifs] = useState<Record<string, string>>({});
+  // Valori effettivi della serie in corso (reps fatte, banda usata)
+  const [repsDone, setRepsDone] = useState<number | null>(null);
+  const [bandUsed, setBandUsed] = useState<BandColor | null>(null);
+  const exIdx = snapshot?.exerciseIndex ?? -1;
+  const setIdx = snapshot?.setIndex ?? -1;
+
+  // Nuova serie: le reps tornano al valore previsto; la banda si azzera solo cambiando esercizio
+  useEffect(() => {
+    setRepsDone(null);
+  }, [exIdx, setIdx]);
+  useEffect(() => {
+    setBandUsed(null);
+  }, [exIdx]);
 
   useEffect(() => {
     getExerciseGifMap().then(setGifs).catch(() => {});
   }, []);
-
-  const isAiSession =
-    !!activeWorkout &&
-    !!weeklyProgram?.days.some((d) => d.workout.id === activeWorkout.id && !d.completed);
 
   const finishWorkout = async (rpe?: number) => {
     await endWorkout(rpe);
@@ -162,6 +173,13 @@ export default function ActiveWorkoutScreen() {
       : snapshot.state === "done"
       ? "COMPLETATO"
       : "ATTIVO";
+  const targetReps = currentEx.reps;
+  const shownReps = repsDone ?? targetReps;
+  const shownBand: BandColor = bandUsed ?? ex?.band ?? "yellow";
+  const bandChoices: BandColor[] = Array.from(
+    new Set<BandColor>([...(settings.ownedBands ?? []), ...(ex ? [ex.band] : [])])
+  );
+  const onCompleteSet = () => completeSet({ reps: shownReps, band: shownBand });
   const setText = `${snapshot.setIndex + 1} / ${currentEx.sets} · ${currentEx.reps} reps`;
   const gifUrl = ex ? gifs[ex.id] : undefined;
   const showGif = !!gifUrl && !(isRest && batterySaver);
@@ -190,14 +208,12 @@ export default function ActiveWorkoutScreen() {
       onStart={() => activeWorkout && startWorkout(activeWorkout)}
       onPause={pauseWorkout}
       onResume={resumeWorkout}
-      onCompleteSet={completeSet}
+      onCompleteSet={onCompleteSet}
       onSkip={skipExercise}
       onEnd={async () => {
-        if (isAiSession) {
-          setRpeStep(true);
-        } else {
-          await finishWorkout(undefined);
-        }
+        // L'RPE viene chiesto sempre (con "Salta"): serve a registrare lo sforzo reale.
+        // L'adattamento del programma AI scatta comunque solo per le sessioni del programma.
+        setRpeStep(true);
       }}
     />
   );
@@ -264,6 +280,47 @@ export default function ActiveWorkoutScreen() {
           {ex?.name ?? "—"}
         </Text>
         <Text style={styles.setInfo}>{setText}</Text>
+        {snapshot.state === "active" && (
+          <View style={styles.logBox}>
+            <View style={styles.logRow}>
+              <Text style={styles.logLabel}>Reps fatte</Text>
+              <Pressable
+                testID="reps-minus"
+                style={styles.stepBtn}
+                hitSlop={8}
+                onPress={() => setRepsDone(Math.max(0, shownReps - 1))}
+              >
+                <Ionicons name="remove" size={18} color={colors.onSurface} />
+              </Pressable>
+              <Text testID="reps-value" style={styles.stepValue}>
+                {shownReps}
+              </Text>
+              <Pressable
+                testID="reps-plus"
+                style={styles.stepBtn}
+                hitSlop={8}
+                onPress={() => setRepsDone(Math.min(99, shownReps + 1))}
+              >
+                <Ionicons name="add" size={18} color={colors.onSurface} />
+              </Pressable>
+            </View>
+            <View style={styles.logRow}>
+              {bandChoices.map((b) => (
+                <Pressable
+                  key={b}
+                  testID={`band-${b}`}
+                  accessibilityLabel={bandLabel[b]}
+                  onPress={() => setBandUsed(b)}
+                  style={[
+                    styles.bandDot,
+                    { backgroundColor: bandHex[b] },
+                    shownBand === b && styles.bandDotActive,
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
+        )}
         <View style={{ height: spacing.md }} />
         <Timer
           size={200}
@@ -393,6 +450,26 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   dangerBtnText: { color: colors.onSurface, fontWeight: "800", fontSize: typography.base },
+  logBox: { alignItems: "center", gap: spacing.sm, marginTop: spacing.sm },
+  logRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  logLabel: { color: colors.muted, fontSize: typography.base },
+  stepBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceSecondary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepValue: {
+    color: colors.onSurface,
+    fontSize: typography.xl,
+    fontWeight: "800",
+    minWidth: 32,
+    textAlign: "center",
+  },
+  bandDot: { width: 28, height: 28, borderRadius: radius.pill, opacity: 0.5 },
+  bandDotActive: { opacity: 1, borderWidth: 3, borderColor: colors.onSurface },
   rpeRow: {
     flexDirection: "row",
     flexWrap: "wrap",

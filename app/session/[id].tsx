@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useWorkout } from "@/src/context/WorkoutContext";
-import { colors, radius, spacing, typography } from "@/src/theme";
+import { bandHex, colors, radius, spacing, typography } from "@/src/theme";
 
 function fmtDuration(s: number) {
   const h = Math.floor(s / 3600);
@@ -79,6 +79,13 @@ export default function SessionDetailScreen() {
             <Text style={styles.statValue}>{session.calories}</Text>
             <Text style={styles.statLabel}>Kcal</Text>
           </View>
+          {typeof session.rpe === "number" && (
+            <View style={styles.stat}>
+              <Ionicons name="speedometer" size={20} color={colors.warning} />
+              <Text style={styles.statValue}>{session.rpe}/10</Text>
+              <Text style={styles.statLabel}>Sforzo</Text>
+            </View>
+          )}
         </View>
 
         <Text style={styles.sectionTitle}>Esercizi</Text>
@@ -93,6 +100,19 @@ export default function SessionDetailScreen() {
                 <Text style={styles.exMeta}>
                   {e.sets} serie · {e.reps} reps
                 </Text>
+                {e.setLogs && e.setLogs.length > 0 && (
+                  <View style={styles.setLogList}>
+                    {e.setLogs.map((l) => (
+                      <View key={l.setIndex} style={styles.setLogRow}>
+                        <View style={[styles.setLogDot, { backgroundColor: bandHex[l.band] }]} />
+                        <Text style={styles.exMeta}>
+                          Serie {l.setIndex + 1}: {l.reps}
+                          {l.reps !== l.targetReps ? ` / ${l.targetReps}` : ""} reps
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
             </View>
           ))
@@ -179,6 +199,9 @@ const styles = StyleSheet.create({
   },
   exName: { color: colors.onSurface, fontSize: typography.base, fontWeight: "600" },
   exMeta: { color: colors.muted, fontSize: typography.sm, marginTop: 2 },
+  setLogList: { marginTop: spacing.xs, gap: 2 },
+  setLogRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  setLogDot: { width: 10, height: 10, borderRadius: radius.pill },
   emptyHint: { color: colors.muted },
   empty: { flex: 1, alignItems: "center", justifyContent: "center" },
   emptyText: { color: colors.muted },

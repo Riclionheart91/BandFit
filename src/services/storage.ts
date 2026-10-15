@@ -1,16 +1,27 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Workout } from "@/src/data/workouts";
+import type { BandColor } from "@/src/theme";
 
 const KEYS = {
   customWorkouts: "@rb/custom_workouts",
   sessions: "@rb/sessions",
 };
 
+/** Una serie realmente eseguita (a differenza di `sets`/`reps`, che sono i valori pianificati). */
+export type SetLog = {
+  setIndex: number; // 0-based
+  targetReps: number; // ripetizioni previste dal piano
+  reps: number; // ripetizioni fatte
+  band: BandColor; // banda usata
+  holdSeconds?: number; // solo per le varianti isometriche
+};
+
 export type SessionExerciseLog = {
   exerciseId: string;
   name: string;
-  sets: number;
-  reps: number;
+  sets: number; // serie pianificate
+  reps: number; // ripetizioni pianificate per serie
+  setLogs?: SetLog[]; // assente nelle sessioni salvate prima di questa versione
 };
 
 export type Session = {
@@ -21,6 +32,7 @@ export type Session = {
   duration: number; // seconds
   heartRates: number[];
   calories: number;
+  rpe?: number | null; // sforzo percepito 1-10, se indicato a fine allenamento
   exercises?: SessionExerciseLog[];
 };
 

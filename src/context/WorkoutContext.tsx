@@ -28,7 +28,9 @@ import {
   saveCustomWorkout,
   deleteCustomWorkout,
   type Session,
+  type SetLog,
 } from "@/src/services/storage";
+import type { BandColor } from "@/src/theme";
 import { logWorkoutToCalendar } from "@/src/services/calendar";
 import { EXERCISES_BY_ID } from "@/src/data/exercises";
 import { audioCoach, legal, aiEngine } from "@/src/config";
@@ -61,7 +63,8 @@ type Ctx = {
   startWorkout: (w: Workout) => void;
   pauseWorkout: () => void;
   resumeWorkout: () => void;
-  completeSet: () => void;
+  /** Chiude la serie corrente; reps e band sono quelli effettivamente usati (default: previsti dal piano). */
+  completeSet: (input?: { reps?: number; band?: BandColor }) => void;
   skipExercise: () => void;
   endWorkout: (rpe?: number) => Promise<void>;
   cancelWorkout: () => void;
@@ -146,6 +149,8 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
   const lastTickAt = useRef<number>(0);
   const lastExerciseIndex = useRef<number>(-1);
   const lastEngineState = useRef<string>("idle");
+  // Serie realmente eseguite, per indice dell'esercizio nel workout attivo
+  const setLogsRef = useRef<Record<number, SetLog[]>>({});
 
   const refresh = useCallback(async () => {
     const [s, c] = await Promise.all([getSessions(), getCustomWorkouts()]);
@@ -324,6 +329,7 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
   const startWorkout = useCallback(
     (w: Workout) => {
       hrCollected.current = [];
+      setLogsRef.current = {};
       lastExerciseIndex.current = -1;
       lastEngineState.current = "idle";
       const engine = new WorkoutEngine(w, {
@@ -356,8 +362,28 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
     engineRef.current?.start();
   }, []);
 
-  const completeSet = useCallback(() => {
-    engineRef.current?.completeSet();
+  const completeSet = useCallback((input?: { reps?: number; band?: BandColor }) => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    const snap = engine.snapshot();
+    const ex = snap.currentExercise;
+    if (ex && snap.state === "active") {
+      const def = EXERCISES_BY_ID[ex.exerciseId];
+      const reps = Math.max(0, Math.round(input?.reps ?? ex.reps));
+      const log: SetLog = {
+        setIndex: snap.setIndex,
+        targetReps: ex.reps,
+        reps,
+        band: input?.band ?? def?.band ?? "yellow",
+        ...(ex.holdSeconds ? { holdSeconds: ex.holdSeconds } : {}),
+      };
+      const prev = setLogsRef.current[snap.exerciseIndex] ?? [];
+      setLogsRef.current[snap.exerciseIndex] = [
+        ...prev.filter((l) => l.setIndex !== log.setIndex),
+        log,
+      ];
+    }
+    engine.completeSet();
   }, []);
 
   const skipExercise = useCallback(() => {
@@ -368,6 +394,7 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
   const cancelWorkout = useCallback(() => {
     if (!engineRef.current) return;
     engineRef.current.end();
+    setLogsRef.current = {};
     stopTicker();
     healthStop();
     setActiveWorkout(null);
@@ -398,11 +425,13 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
         duration: snap.elapsed,
         heartRates: [...hrCollected.current],
         calories,
-        exercises: activeWorkout.exercises.map((e) => ({
+        rpe: typeof rpe === "number" ? rpe : null,
+        exercises: activeWorkout.exercises.map((e, i) => ({
           exerciseId: e.exerciseId,
           name: EXERCISES_BY_ID[e.exerciseId]?.name ?? e.exerciseId,
           sets: e.sets,
           reps: e.reps,
+          setLogs: setLogsRef.current[i] ?? [],
         })),
       };
       await saveSession(session);
