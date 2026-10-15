@@ -9,11 +9,12 @@ const KEYS = {
 
 /** Una serie realmente eseguita (a differenza di `sets`/`reps`, che sono i valori pianificati). */
 export type SetLog = {
-  setIndex: number; // 0-based
+  setIndex: number; // 0-based; il riscaldamento ha setIndex 0, come la prima serie di lavoro che segue
   targetReps: number; // ripetizioni previste dal piano
   reps: number; // ripetizioni fatte
   band: BandColor; // banda usata
   holdSeconds?: number; // solo per le varianti isometriche
+  warmup?: boolean; // serie di riscaldamento (non conta tra le serie di lavoro)
 };
 
 export type SessionExerciseLog = {

@@ -31,6 +31,7 @@ import {
   type SetLog,
 } from "@/src/services/storage";
 import type { BandColor } from "@/src/theme";
+import { warmupBand, warmupReps } from "@/src/services/warmup";
 import { logWorkoutToCalendar } from "@/src/services/calendar";
 import { EXERCISES_BY_ID } from "@/src/data/exercises";
 import { audioCoach, legal, aiEngine } from "@/src/config";
@@ -341,7 +342,8 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
           haptic.notify(Haptics.NotificationFeedbackType.Success);
           stopTicker();
         },
-      });
+      },
+      { warmup: settingsRef.current.warmupEnabled });
       engineRef.current = engine;
       setActiveWorkout(w);
       engine.start();
@@ -369,17 +371,23 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
     const ex = snap.currentExercise;
     if (ex && snap.state === "active") {
       const def = EXERCISES_BY_ID[ex.exerciseId];
-      const reps = Math.max(0, Math.round(input?.reps ?? ex.reps));
+      const workBand: BandColor = def?.band ?? "yellow";
+      const isWarmup = snap.isWarmup;
+      const targetReps = isWarmup ? warmupReps(ex.reps) : ex.reps;
+      const defaultBand = isWarmup
+        ? warmupBand(workBand, settingsRef.current.ownedBands)
+        : workBand;
       const log: SetLog = {
         setIndex: snap.setIndex,
-        targetReps: ex.reps,
-        reps,
-        band: input?.band ?? def?.band ?? "yellow",
+        targetReps,
+        reps: Math.max(0, Math.round(input?.reps ?? targetReps)),
+        band: input?.band ?? defaultBand,
+        ...(isWarmup ? { warmup: true } : {}),
         ...(ex.holdSeconds ? { holdSeconds: ex.holdSeconds } : {}),
       };
       const prev = setLogsRef.current[snap.exerciseIndex] ?? [];
       setLogsRef.current[snap.exerciseIndex] = [
-        ...prev.filter((l) => l.setIndex !== log.setIndex),
+        ...prev.filter((l) => !(l.setIndex === log.setIndex && !!l.warmup === isWarmup)),
         log,
       ];
     }

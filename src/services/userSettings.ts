@@ -5,6 +5,7 @@ export type UserSettings = {
   audioCoachEnabled: boolean;
   hapticsEnabled: boolean;
   ownedBands: BandColor[];
+  warmupEnabled: boolean;
   defaultRestSeconds: number;
   aiExercisesPerSession: number;
 };
@@ -13,6 +14,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   audioCoachEnabled: true,
   hapticsEnabled: true,
   ownedBands: ["yellow", "red", "black", "purple"],
+  warmupEnabled: false,
   defaultRestSeconds: aiEngine.rest.base,
   aiExercisesPerSession: aiEngine.exercisesPerSession,
 };

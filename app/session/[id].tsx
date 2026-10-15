@@ -106,7 +106,7 @@ export default function SessionDetailScreen() {
                       <View key={l.setIndex} style={styles.setLogRow}>
                         <View style={[styles.setLogDot, { backgroundColor: bandHex[l.band] }]} />
                         <Text style={styles.exMeta}>
-                          Serie {l.setIndex + 1}: {l.reps}
+                          {l.warmup ? "Riscaldamento" : `Serie ${l.setIndex + 1}`}: {l.reps}
                           {l.reps !== l.targetReps ? ` / ${l.targetReps}` : ""} reps
                         </Text>
                       </View>

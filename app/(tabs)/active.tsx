@@ -13,6 +13,7 @@ import { getExerciseGifMap } from "@/src/services/exerciseGifs";
 import { EXERCISES_BY_ID } from "@/src/data/exercises";
 import { PREDEFINED_WORKOUTS } from "@/src/data/workouts";
 import { uiStrings } from "@/src/config";
+import { warmupBand, warmupReps } from "@/src/services/warmup";
 import {
   bandHex,
   bandLabel,
@@ -53,14 +54,15 @@ export default function ActiveWorkoutScreen() {
   const [bandUsed, setBandUsed] = useState<BandColor | null>(null);
   const exIdx = snapshot?.exerciseIndex ?? -1;
   const setIdx = snapshot?.setIndex ?? -1;
+  const warmupNow = snapshot?.isWarmup ?? false;
 
   // Nuova serie: le reps tornano al valore previsto; la banda si azzera solo cambiando esercizio
   useEffect(() => {
     setRepsDone(null);
-  }, [exIdx, setIdx]);
+  }, [exIdx, setIdx, warmupNow]);
   useEffect(() => {
     setBandUsed(null);
-  }, [exIdx]);
+  }, [exIdx, warmupNow]);
 
   useEffect(() => {
     getExerciseGifMap().then(setGifs).catch(() => {});
@@ -173,14 +175,19 @@ export default function ActiveWorkoutScreen() {
       : snapshot.state === "done"
       ? "COMPLETATO"
       : "ATTIVO";
-  const targetReps = currentEx.reps;
+  const isWarmup = snapshot.isWarmup;
+  const targetReps = isWarmup ? warmupReps(currentEx.reps) : currentEx.reps;
   const shownReps = repsDone ?? targetReps;
-  const shownBand: BandColor = bandUsed ?? ex?.band ?? "yellow";
+  const workBand: BandColor = ex?.band ?? "yellow";
+  const shownBand: BandColor =
+    bandUsed ?? (isWarmup ? warmupBand(workBand, settings.ownedBands ?? []) : workBand);
   const bandChoices: BandColor[] = Array.from(
     new Set<BandColor>([...(settings.ownedBands ?? []), ...(ex ? [ex.band] : [])])
   );
   const onCompleteSet = () => completeSet({ reps: shownReps, band: shownBand });
-  const setText = `${snapshot.setIndex + 1} / ${currentEx.sets} · ${currentEx.reps} reps`;
+  const setText = isWarmup
+    ? `Riscaldamento · ${targetReps} reps`
+    : `${snapshot.setIndex + 1} / ${currentEx.sets} · ${currentEx.reps} reps`;
   const gifUrl = ex ? gifs[ex.id] : undefined;
   const showGif = !!gifUrl && !(isRest && batterySaver);
 
