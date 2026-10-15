@@ -110,7 +110,7 @@ Se vedi warning gialli su pacchetti deprecati o vulnerabilità moderate/alte in 
 3. **SQL Editor → New query**: incolla **tutto** il contenuto di `setup_supabase.sql` incluso in questo pacchetto → **Run**.
 
 Questo unico script crea:
-- tabelle `sessions`, `custom_workouts`, `weekly_programs` con le colonne esatte usate dal codice (verificate contro i tipi reali `Session`/`Workout`/`WeeklyProgram`)
+- tabelle `sessions`, `custom_workouts`, `weekly_programs`, `personal_profiles` con le colonne esatte usate dal codice (verificate contro i tipi reali `Session`/`Workout`/`WeeklyProgram`)
 - indici, trigger `updated_at`
 - Row Level Security con policy separate select/insert/update/delete (ogni utente vede solo i propri dati)
 - bucket storage pubblico `gifs` per le GIF degli esercizi

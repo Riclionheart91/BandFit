@@ -41,6 +41,19 @@ create table if not exists weekly_programs (
   updated_at timestamptz not null default now()
 );
 
+-- Profilo personale (una riga per utente): usato da cloudStorage.web.ts
+create table if not exists personal_profiles (
+  user_id uuid primary key references auth.users on delete cascade,
+  name text not null default '',
+  age integer,
+  weight_kg numeric(5,2),
+  height_cm numeric(5,2),
+  goal text check (goal is null or goal in ('fatloss', 'tone', 'strength', 'endurance')),
+  level text check (level is null or level in ('beginner', 'intermediate', 'advanced')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 -- 2. INDICI --------------------------------------------------------
 
 create index if not exists idx_sessions_user_date on sessions (user_id, date desc);
@@ -67,11 +80,17 @@ create trigger trg_weekly_programs_updated
 before update on weekly_programs
 for each row execute function set_updated_at();
 
+drop trigger if exists trg_personal_profiles_updated on personal_profiles;
+create trigger trg_personal_profiles_updated
+before update on personal_profiles
+for each row execute function set_updated_at();
+
 -- 4. ROW LEVEL SECURITY -----------------------------------------------
 
 alter table sessions enable row level security;
 alter table custom_workouts enable row level security;
 alter table weekly_programs enable row level security;
+alter table personal_profiles enable row level security;
 
 drop policy if exists "sessions_select_own" on sessions;
 drop policy if exists "sessions_insert_own" on sessions;
@@ -113,6 +132,20 @@ create policy "weekly_programs_insert_own" on weekly_programs
 create policy "weekly_programs_update_own" on weekly_programs
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "weekly_programs_delete_own" on weekly_programs
+  for delete using (auth.uid() = user_id);
+
+drop policy if exists "personal_profiles_select_own" on personal_profiles;
+drop policy if exists "personal_profiles_insert_own" on personal_profiles;
+drop policy if exists "personal_profiles_update_own" on personal_profiles;
+drop policy if exists "personal_profiles_delete_own" on personal_profiles;
+
+create policy "personal_profiles_select_own" on personal_profiles
+  for select using (auth.uid() = user_id);
+create policy "personal_profiles_insert_own" on personal_profiles
+  for insert with check (auth.uid() = user_id);
+create policy "personal_profiles_update_own" on personal_profiles
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "personal_profiles_delete_own" on personal_profiles
   for delete using (auth.uid() = user_id);
 
 -- 5. STORAGE BUCKET PUBBLICO PER LE GIF ESERCIZI --------------------
