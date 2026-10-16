@@ -391,7 +391,6 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
       };
       const prev = setLogsRef.current[snap.exerciseIndex] ?? [];
       const record =
-        !isWarmup &&
         !ex.holdSeconds &&
         isNewRecord(sessionsRef.current, ex.exerciseId, log.band, log.reps, prev);
       setPrAlert(
