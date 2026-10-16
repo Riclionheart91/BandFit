@@ -14,6 +14,7 @@ export type SetLog = {
   reps: number; // ripetizioni fatte
   band: BandColor; // banda usata
   holdSeconds?: number; // solo per le varianti isometriche
+  warmup?: boolean; // serie di riscaldamento (non conta tra le serie di lavoro)
 };
 
 export type SessionExerciseLog = {
