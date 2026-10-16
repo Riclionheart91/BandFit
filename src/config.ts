@@ -97,6 +97,8 @@ export const uiStrings = {
     audioCoachHint: "Annunci vocali durante l'allenamento",
     haptics: "Feedback aptico",
     hapticsHint: "Vibrazione ai cambi di stato",
+    warmup: "Serie di riscaldamento",
+    warmupHint: "Una serie leggera (circa metà reps, banda più leggera) prima di ogni esercizio",
     myBands: "I miei elastici",
     myBandsHint: "Segna quelli che possiedi davvero",
     defaultRest: "Riposo predefinito",

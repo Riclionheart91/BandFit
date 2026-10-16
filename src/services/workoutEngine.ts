@@ -1,11 +1,13 @@
 import type { Workout, WorkoutExercise } from "@/src/data/workouts";
+import { WARMUP_REST_SECONDS } from "@/src/services/warmup";
 
 export type EngineState = "idle" | "active" | "paused" | "rest" | "done";
 
 export type EngineSnapshot = {
   state: EngineState;
   exerciseIndex: number;
-  setIndex: number; // 0-based current set
+  setIndex: number; // 0-based current set (la serie di riscaldamento non conta e non lo fa avanzare)
+  isWarmup: boolean; // true durante la serie di riscaldamento che precede la serie 0 di un esercizio
   elapsed: number; // total elapsed seconds since start (excluding paused time)
   restRemaining: number; // when in rest
   currentExercise: WorkoutExercise | null;
@@ -31,10 +33,14 @@ export class WorkoutEngine {
   private setIndex = 0;
   private elapsed = 0;
   private restRemaining = 0;
+  private warmupEnabled: boolean;
+  private inWarmup: boolean;
 
-  constructor(workout: Workout, events: EngineEvents = {}) {
+  constructor(workout: Workout, events: EngineEvents = {}, options: { warmup?: boolean } = {}) {
     this.workout = workout;
     this.events = events;
+    this.warmupEnabled = !!options.warmup;
+    this.inWarmup = this.warmupEnabled;
   }
 
   start() {
@@ -61,6 +67,15 @@ export class WorkoutEngine {
     if (!ex) return;
     this.events.onSetComplete?.(this.exerciseIndex, this.setIndex);
 
+    if (this.inWarmup) {
+      // Il riscaldamento non è una serie di lavoro: si passa alla serie 0 dopo una pausa breve.
+      this.inWarmup = false;
+      this.restRemaining = WARMUP_REST_SECONDS;
+      this.state = "rest";
+      this.emit();
+      return;
+    }
+
     if (this.setIndex + 1 < ex.sets) {
       this.setIndex += 1;
       this.restRemaining = ex.rest;
@@ -70,6 +85,7 @@ export class WorkoutEngine {
       if (this.exerciseIndex + 1 < this.workout.exercises.length) {
         this.exerciseIndex += 1;
         this.setIndex = 0;
+        this.inWarmup = this.warmupEnabled;
         this.restRemaining = ex.rest;
         this.state = "rest";
       } else {
@@ -87,6 +103,7 @@ export class WorkoutEngine {
     if (this.exerciseIndex + 1 < this.workout.exercises.length) {
       this.exerciseIndex += 1;
       this.setIndex = 0;
+      this.inWarmup = this.warmupEnabled;
       this.restRemaining = 0;
       this.state = "active";
     } else {
@@ -144,6 +161,7 @@ export class WorkoutEngine {
       state: this.state,
       exerciseIndex: this.exerciseIndex,
       setIndex: this.setIndex,
+      isWarmup: this.inWarmup,
       elapsed: this.elapsed,
       restRemaining: this.restRemaining,
       currentExercise: ex[this.exerciseIndex] ?? null,

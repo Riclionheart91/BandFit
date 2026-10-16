@@ -17,8 +17,14 @@ type Props = {
   currentSetIndex: number;
   /** "active": la serie corrente si può chiudere. "rest": è la prossima, ancora in attesa. */
   phase: "active" | "rest";
+  /** Riscaldamento: assente, in corso o già fatto (con il suo log). */
+  warmup: "none" | "current" | "done";
+  warmupLog?: SetLog;
+  /** Riscaldamento dell'ultima volta. */
+  previousWarmup?: SetLog | null;
   /** Serie già chiuse di questo esercizio. */
   logs: SetLog[];
+  /** Ripetizioni previste per le serie di lavoro (mostrate sulle righe ancora da fare). */
   targetReps: number;
   /** Ultima volta, per ogni serie (null se non c'è). */
   previousFor: (setIndex: number) => SetLog | null;
@@ -46,9 +52,45 @@ export function SetRowsList(p: Props) {
         <View style={styles.cDone} />
       </View>
 
+      {p.warmup !== "none" && (
+        <View
+          testID="set-row-warmup"
+          style={[styles.row, p.warmup === "done" ? styles.rowDone : styles.rowCurrent]}
+        >
+          <Text style={[styles.cell, styles.cSet, { color: colors.warning }]}>R</Text>
+          <Text style={[styles.cellMuted, styles.cPrev]} numberOfLines={1}>
+            {p.previousWarmup ? `${p.previousWarmup.reps} · ${shortBand(p.previousWarmup.band)}` : "—"}
+          </Text>
+          {p.warmup === "done" && p.warmupLog ? (
+            <>
+              <Text style={[styles.cell, styles.cReps, { textAlign: "center" }]}>{p.warmupLog.reps}</Text>
+              <View style={[styles.cBand, styles.dots]}>
+                <View style={[styles.dot, { backgroundColor: bandHex[p.warmupLog.band], opacity: 1 }]} />
+              </View>
+              <View style={styles.cDone}>
+                <Ionicons name="checkmark-circle" size={26} color={colors.success} />
+              </View>
+            </>
+          ) : (
+            <>
+              <Stepper value={p.currentReps} onChange={p.onRepsChange} testID="set-row-warmup-reps" />
+              <BandDots value={p.currentBand} choices={p.bandChoices} onChange={p.onBandChange} />
+              <Pressable
+                testID="set-row-complete"
+                disabled={p.phase !== "active"}
+                onPress={p.onComplete}
+                style={[styles.cDone, styles.doneBtn, p.phase !== "active" && { opacity: 0.35 }]}
+              >
+                <Ionicons name="checkmark" size={20} color={colors.surface} />
+              </Pressable>
+            </>
+          )}
+        </View>
+      )}
+
       {rows.map((i) => {
         const done = p.logs.find((l) => !l.warmup && l.setIndex === i);
-        const isCurrent = !done && i === p.currentSetIndex;
+        const isCurrent = !done && p.warmup !== "current" && i === p.currentSetIndex;
         const prev = p.previousFor(i);
         const prevText = prev ? `${prev.reps} · ${shortBand(prev.band)}` : "—";
 

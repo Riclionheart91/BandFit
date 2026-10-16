@@ -103,6 +103,18 @@ export default function SettingsScreen() {
           />
         </View>
 
+        <View style={[styles.card, styles.row]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardLabel}>{uiStrings.settings.warmup}</Text>
+            <Text style={styles.cardHint}>{uiStrings.settings.warmupHint}</Text>
+          </View>
+          <Switch
+            testID="settings-warmup"
+            value={settings.warmupEnabled}
+            onValueChange={(v) => updateSettings({ warmupEnabled: v })}
+          />
+        </View>
+
         <View style={styles.card}>
           <Text style={styles.cardLabel}>{uiStrings.settings.myBands}</Text>
           <Text style={styles.cardHint}>{uiStrings.settings.myBandsHint}</Text>
