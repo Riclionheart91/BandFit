@@ -96,6 +96,26 @@ export class WorkoutEngine {
     this.emit();
   }
 
+  /** Anticipa la fine del riposo: si passa subito alla serie successiva. */
+  skipRest() {
+    if (this.state !== "rest") return;
+    this.restRemaining = 0;
+    this.state = "active";
+    this.emit();
+  }
+
+  /** Allunga o accorcia il riposo in corso (secondi, anche negativi). Sotto 1 s equivale a saltarlo. */
+  adjustRest(deltaSeconds: number) {
+    if (this.state !== "rest") return;
+    const next = Math.min(600, this.restRemaining + deltaSeconds);
+    if (next < 1) {
+      this.skipRest();
+      return;
+    }
+    this.restRemaining = next;
+    this.emit();
+  }
+
   end() {
     if (this.state !== "done") {
       this.state = "done";

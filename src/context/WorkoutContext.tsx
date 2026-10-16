@@ -30,7 +30,8 @@ import {
   type Session,
   type SetLog,
 } from "@/src/services/storage";
-import type { BandColor } from "@/src/theme";
+import { bandLabel, type BandColor } from "@/src/theme";
+import { isNewRecord } from "@/src/services/history";
 import { logWorkoutToCalendar } from "@/src/services/calendar";
 import { EXERCISES_BY_ID } from "@/src/data/exercises";
 import { audioCoach, legal, aiEngine } from "@/src/config";
@@ -66,6 +67,10 @@ type Ctx = {
   /** Chiude la serie corrente; reps e band sono quelli effettivamente usati (default: previsti dal piano). */
   completeSet: (input?: { reps?: number; band?: BandColor }) => void;
   skipExercise: () => void;
+  skipRest: () => void;
+  adjustRest: (deltaSeconds: number) => void;
+  /** Messaggio di record dopo l'ultima serie chiusa, o null. */
+  prAlert: string | null;
   endWorkout: (rpe?: number) => Promise<void>;
   cancelWorkout: () => void;
   // hr
@@ -124,6 +129,7 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
   const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
   const [snapshot, setSnapshot] = useState<EngineSnapshot | null>(null);
   const [bpm, setBpm] = useState<number | null>(null);
+  const [prAlert, setPrAlert] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [customWorkouts, setCustomWorkouts] = useState<Workout[]>([]);
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(true);
@@ -151,6 +157,11 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
   const lastEngineState = useRef<string>("idle");
   // Serie realmente eseguite, per indice dell'esercizio nel workout attivo
   const setLogsRef = useRef<Record<number, SetLog[]>>({});
+  const sessionsRef = useRef<Session[]>([]);
+
+  useEffect(() => {
+    sessionsRef.current = sessions;
+  }, [sessions]);
 
   const refresh = useCallback(async () => {
     const [s, c] = await Promise.all([getSessions(), getCustomWorkouts()]);
@@ -330,6 +341,7 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
     (w: Workout) => {
       hrCollected.current = [];
       setLogsRef.current = {};
+      setPrAlert(null);
       lastExerciseIndex.current = -1;
       lastEngineState.current = "idle";
       const engine = new WorkoutEngine(w, {
@@ -378,12 +390,29 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
         ...(ex.holdSeconds ? { holdSeconds: ex.holdSeconds } : {}),
       };
       const prev = setLogsRef.current[snap.exerciseIndex] ?? [];
+      const record =
+        !isWarmup &&
+        !ex.holdSeconds &&
+        isNewRecord(sessionsRef.current, ex.exerciseId, log.band, log.reps, prev);
+      setPrAlert(
+        record
+          ? `Record! ${log.reps} reps con la banda ${bandLabel[log.band].split(" ")[0].toLowerCase()}`
+          : null
+      );
       setLogsRef.current[snap.exerciseIndex] = [
         ...prev.filter((l) => l.setIndex !== log.setIndex),
         log,
       ];
     }
     engine.completeSet();
+  }, []);
+
+  const skipRest = useCallback(() => {
+    engineRef.current?.skipRest();
+  }, []);
+
+  const adjustRest = useCallback((deltaSeconds: number) => {
+    engineRef.current?.adjustRest(deltaSeconds);
   }, []);
 
   const skipExercise = useCallback(() => {
@@ -395,6 +424,7 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
     if (!engineRef.current) return;
     engineRef.current.end();
     setLogsRef.current = {};
+    setPrAlert(null);
     stopTicker();
     healthStop();
     setActiveWorkout(null);
@@ -456,6 +486,7 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
       const u = await getCurrentUser().catch(() => null);
       if (u) syncSessionsToCloud(u.id, [session]).catch(() => {});
 
+      setPrAlert(null);
       setActiveWorkout(null);
       setSnapshot(null);
       engineRef.current = null;
@@ -509,6 +540,9 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
       resumeWorkout,
       completeSet,
       skipExercise,
+      skipRest,
+      adjustRest,
+      prAlert,
       endWorkout,
       cancelWorkout,
       bpm,
@@ -541,6 +575,9 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
       resumeWorkout,
       completeSet,
       skipExercise,
+      skipRest,
+      adjustRest,
+      prAlert,
       endWorkout,
       cancelWorkout,
       bpm,

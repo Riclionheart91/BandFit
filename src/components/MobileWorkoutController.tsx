@@ -11,6 +11,10 @@ type Props = {
   onResume: () => void;
   onCompleteSet: () => void;
   onSkip: () => void;
+  /** Durante il riposo: salta il riposo senza saltare l'esercizio. */
+  onSkipRest?: () => void;
+  /** Durante il riposo: allunga o accorcia di N secondi. */
+  onAdjustRest?: (deltaSeconds: number) => void;
   onEnd: () => void;
 };
 
@@ -21,12 +25,24 @@ export function MobileWorkoutController({
   onResume,
   onCompleteSet,
   onSkip,
+  onSkipRest,
+  onAdjustRest,
   onEnd,
 }: Props) {
   const isPlaying = state === "active" || state === "rest";
 
   return (
     <BlurView intensity={80} tint="dark" style={styles.bar}>
+      {state === "rest" && onAdjustRest && (
+        <View style={styles.restAdjust}>
+          <Pressable testID="rest-minus" style={styles.adjBtn} onPress={() => onAdjustRest(-15)}>
+            <Text style={styles.adjText}>−15 s</Text>
+          </Pressable>
+          <Pressable testID="rest-plus" style={styles.adjBtn} onPress={() => onAdjustRest(15)}>
+            <Text style={styles.adjText}>+15 s</Text>
+          </Pressable>
+        </View>
+      )}
       <View style={styles.row}>
         <CtrlButton
           testID="ctrl-end"
@@ -48,7 +64,7 @@ export function MobileWorkoutController({
             testID="ctrl-set-done"
             label={state === "rest" ? "Salta riposo" : "Serie ✓"}
             icon={state === "rest" ? "play-skip-forward" : "checkmark"}
-            onPress={state === "rest" ? onSkip : onCompleteSet}
+            onPress={state === "rest" ? onSkipRest ?? onSkip : onCompleteSet}
           />
         ) : (
           <PrimaryButton
@@ -136,6 +152,19 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
     backgroundColor: "rgba(0,0,0,0.5)",
   },
+  restAdjust: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  adjBtn: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceSecondary,
+  },
+  adjText: { color: colors.onSurface, fontWeight: "700", fontSize: typography.base },
   row: {
     flexDirection: "row",
     alignItems: "center",

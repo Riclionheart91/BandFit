@@ -13,6 +13,7 @@ import { getExerciseGifMap } from "@/src/services/exerciseGifs";
 import { EXERCISES_BY_ID } from "@/src/data/exercises";
 import { PREDEFINED_WORKOUTS } from "@/src/data/workouts";
 import { uiStrings } from "@/src/config";
+import { previousSetLog } from "@/src/services/history";
 import {
   bandHex,
   bandLabel,
@@ -39,6 +40,10 @@ export default function ActiveWorkoutScreen() {
     resumeWorkout,
     completeSet,
     skipExercise,
+    skipRest,
+    adjustRest,
+    prAlert,
+    sessions,
     endWorkout,
     cancelWorkout,
     batterySaver,
@@ -175,7 +180,9 @@ export default function ActiveWorkoutScreen() {
       : "ATTIVO";
   const targetReps = currentEx.reps;
   const shownReps = repsDone ?? targetReps;
-  const shownBand: BandColor = bandUsed ?? ex?.band ?? "yellow";
+  // Ultima volta: stesso esercizio e stessa serie. Se c'è, la banda proposta è quella usata allora.
+  const prevLog = previousSetLog(sessions, currentEx.exerciseId, snapshot.setIndex);
+  const shownBand: BandColor = bandUsed ?? prevLog?.band ?? ex?.band ?? "yellow";
   const bandChoices: BandColor[] = Array.from(
     new Set<BandColor>([...(settings.ownedBands ?? []), ...(ex ? [ex.band] : [])])
   );
@@ -210,6 +217,8 @@ export default function ActiveWorkoutScreen() {
       onResume={resumeWorkout}
       onCompleteSet={onCompleteSet}
       onSkip={skipExercise}
+      onSkipRest={skipRest}
+      onAdjustRest={adjustRest}
       onEnd={async () => {
         // L'RPE viene chiesto sempre (con "Salta"): serve a registrare lo sforzo reale.
         // L'adattamento del programma AI scatta comunque solo per le sessioni del programma.
@@ -280,8 +289,19 @@ export default function ActiveWorkoutScreen() {
           {ex?.name ?? "—"}
         </Text>
         <Text style={styles.setInfo}>{setText}</Text>
+        {isRest && prAlert && (
+          <View testID="pr-alert" style={styles.prBox}>
+            <Ionicons name="trophy" size={16} color={colors.warning} />
+            <Text style={styles.prText}>{prAlert}</Text>
+          </View>
+        )}
         {snapshot.state === "active" && (
           <View style={styles.logBox}>
+            {prevLog && (
+              <Text testID="prev-set" style={styles.prevText}>
+                Ultima volta: {prevLog.reps} reps · banda {bandLabel[prevLog.band].split(" ")[0].toLowerCase()}
+              </Text>
+            )}
             <View style={styles.logRow}>
               <Text style={styles.logLabel}>Reps fatte</Text>
               <Pressable
@@ -450,6 +470,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   dangerBtnText: { color: colors.onSurface, fontWeight: "800", fontSize: typography.base },
+  prBox: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.sm },
+  prText: { color: colors.warning, fontWeight: "800", fontSize: typography.base },
+  prevText: { color: colors.muted, fontSize: typography.base },
   logBox: { alignItems: "center", gap: spacing.sm, marginTop: spacing.sm },
   logRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   logLabel: { color: colors.muted, fontSize: typography.base },
