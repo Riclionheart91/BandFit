@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Pressable, Image } from "react-native";
+import { View, Text, StyleSheet, Pressable, Image, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as KeepAwake from "expo-keep-awake";
 import { useWorkout } from "@/src/context/WorkoutContext";
 import { Timer } from "@/src/components/Timer";
+import { SetRowsList } from "@/src/components/SetRowsList";
 import { MobileWorkoutController } from "@/src/components/MobileWorkoutController";
 import { TVWorkoutView } from "@/src/components/TVWorkoutView";
 import { subscribeExternalDisplay } from "@/src/services/externalDisplay";
@@ -16,7 +17,6 @@ import { uiStrings } from "@/src/config";
 import { previousSetLog } from "@/src/services/history";
 import {
   bandHex,
-  bandLabel,
   type BandColor,
   colors,
   radius,
@@ -43,6 +43,8 @@ export default function ActiveWorkoutScreen() {
     skipRest,
     adjustRest,
     prAlert,
+    loggedSets,
+    editSetLog,
     sessions,
     endWorkout,
     cancelWorkout,
@@ -277,86 +279,53 @@ export default function ActiveWorkoutScreen() {
     <SafeAreaView style={styles.root} edges={["top"]}>
       {header}
 
-      <View style={styles.center}>
-        {showGif && (
-          <Image
-            source={{ uri: gifUrl }}
-            style={styles.exerciseGif}
-            resizeMode="cover"
+      <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+        <View style={styles.exHeader}>
+          {showGif ? (
+            <Image source={{ uri: gifUrl }} style={styles.exThumb} resizeMode="cover" />
+          ) : null}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.exerciseName} numberOfLines={2}>
+              {ex?.name ?? "—"}
+            </Text>
+            <Text style={styles.setInfo}>{setText}</Text>
+          </View>
+          <Timer
+            size={84}
+            strokeWidth={6}
+            progress={Math.min(1, Math.max(0, progress))}
+            color={band}
+            primaryText={timerText}
+            secondaryText={isRest ? "RIPOSO" : "TEMPO"}
           />
-        )}
-        <Text style={styles.exerciseName} numberOfLines={2}>
-          {ex?.name ?? "—"}
-        </Text>
-        <Text style={styles.setInfo}>{setText}</Text>
+        </View>
+
         {isRest && prAlert && (
           <View testID="pr-alert" style={styles.prBox}>
             <Ionicons name="trophy" size={16} color={colors.warning} />
             <Text style={styles.prText}>{prAlert}</Text>
           </View>
         )}
-        {snapshot.state === "active" && (
-          <View style={styles.logBox}>
-            {prevLog && (
-              <Text testID="prev-set" style={styles.prevText}>
-                Ultima volta: {prevLog.reps} reps · banda {bandLabel[prevLog.band].split(" ")[0].toLowerCase()}
-              </Text>
-            )}
-            <View style={styles.logRow}>
-              <Text style={styles.logLabel}>Reps fatte</Text>
-              <Pressable
-                testID="reps-minus"
-                style={styles.stepBtn}
-                hitSlop={8}
-                onPress={() => setRepsDone(Math.max(0, shownReps - 1))}
-              >
-                <Ionicons name="remove" size={18} color={colors.onSurface} />
-              </Pressable>
-              <Text testID="reps-value" style={styles.stepValue}>
-                {shownReps}
-              </Text>
-              <Pressable
-                testID="reps-plus"
-                style={styles.stepBtn}
-                hitSlop={8}
-                onPress={() => setRepsDone(Math.min(99, shownReps + 1))}
-              >
-                <Ionicons name="add" size={18} color={colors.onSurface} />
-              </Pressable>
-            </View>
-            <View style={styles.logRow}>
-              {bandChoices.map((b) => (
-                <Pressable
-                  key={b}
-                  testID={`band-${b}`}
-                  accessibilityLabel={bandLabel[b]}
-                  onPress={() => setBandUsed(b)}
-                  style={[
-                    styles.bandDot,
-                    { backgroundColor: bandHex[b] },
-                    shownBand === b && styles.bandDotActive,
-                  ]}
-                />
-              ))}
-            </View>
-          </View>
-        )}
-        <View style={{ height: spacing.md }} />
-        <Timer
-          size={200}
-          strokeWidth={12}
-          progress={Math.min(1, Math.max(0, progress))}
-          color={band}
-          primaryText={timerText}
-          secondaryText={isRest ? "RIPOSO" : "TEMPO"}
+
+        <SetRowsList
+          totalSets={currentEx.sets}
+          currentSetIndex={snapshot.setIndex}
+          phase={isRest ? "rest" : "active"}
+          logs={loggedSets[snapshot.exerciseIndex] ?? []}
+          targetReps={targetReps}
+          previousFor={(i) => previousSetLog(sessions, currentEx.exerciseId, i)}
+          currentReps={shownReps}
+          currentBand={shownBand}
+          bandChoices={bandChoices}
+          onRepsChange={setRepsDone}
+          onBandChange={setBandUsed}
+          onComplete={onCompleteSet}
+          onEditLogged={(i, patch) => editSetLog(snapshot.exerciseIndex, i, patch)}
         />
+
         {nextEx ? (
           <View style={styles.nextBox}>
-            <Ionicons
-              name="arrow-forward-circle"
-              size={16}
-              color={colors.muted}
-            />
+            <Ionicons name="arrow-forward-circle" size={16} color={colors.muted} />
             <Text style={styles.nextLabel}>Prossimo:</Text>
             <Text style={styles.nextName} numberOfLines={1}>
               {nextEx.name}
@@ -368,7 +337,7 @@ export default function ActiveWorkoutScreen() {
             <Text style={styles.nextLabel}>Ultimo esercizio</Text>
           </View>
         )}
-      </View>
+      </ScrollView>
 
       {controller}
     </SafeAreaView>
@@ -392,6 +361,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   stateBadge: { fontSize: 11, letterSpacing: 2, fontWeight: "700" },
+  body: { paddingBottom: spacing.xl, gap: spacing.md },
+  exHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  exThumb: { width: 64, height: 64, borderRadius: radius.md, backgroundColor: colors.surfaceSecondary },
   center: {
     flex: 1,
     alignItems: "center",
@@ -401,9 +378,8 @@ const styles = StyleSheet.create({
   },
   exerciseName: {
     color: colors.onSurface,
-    fontSize: typography.xxl,
+    fontSize: typography.xl,
     fontWeight: "800",
-    textAlign: "center",
     letterSpacing: -0.5,
   },
   exerciseGif: {
@@ -470,29 +446,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   dangerBtnText: { color: colors.onSurface, fontWeight: "800", fontSize: typography.base },
-  prBox: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.sm },
+  prBox: { flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.lg },
   prText: { color: colors.warning, fontWeight: "800", fontSize: typography.base },
-  prevText: { color: colors.muted, fontSize: typography.base },
-  logBox: { alignItems: "center", gap: spacing.sm, marginTop: spacing.sm },
-  logRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  logLabel: { color: colors.muted, fontSize: typography.base },
-  stepBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceSecondary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepValue: {
-    color: colors.onSurface,
-    fontSize: typography.xl,
-    fontWeight: "800",
-    minWidth: 32,
-    textAlign: "center",
-  },
-  bandDot: { width: 28, height: 28, borderRadius: radius.pill, opacity: 0.5 },
-  bandDotActive: { opacity: 1, borderWidth: 3, borderColor: colors.onSurface },
   rpeRow: {
     flexDirection: "row",
     flexWrap: "wrap",

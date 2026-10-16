@@ -71,6 +71,10 @@ type Ctx = {
   adjustRest: (deltaSeconds: number) => void;
   /** Messaggio di record dopo l'ultima serie chiusa, o null. */
   prAlert: string | null;
+  /** Serie chiuse finora nel workout attivo, per indice dell'esercizio. */
+  loggedSets: Record<number, SetLog[]>;
+  /** Corregge reps o banda di una serie già chiusa. */
+  editSetLog: (exerciseIndex: number, setIndex: number, patch: { reps?: number; band?: BandColor }) => void;
   endWorkout: (rpe?: number) => Promise<void>;
   cancelWorkout: () => void;
   // hr
@@ -130,6 +134,7 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
   const [snapshot, setSnapshot] = useState<EngineSnapshot | null>(null);
   const [bpm, setBpm] = useState<number | null>(null);
   const [prAlert, setPrAlert] = useState<string | null>(null);
+  const [loggedSets, setLoggedSets] = useState<Record<number, SetLog[]>>({});
   const [sessions, setSessions] = useState<Session[]>([]);
   const [customWorkouts, setCustomWorkouts] = useState<Workout[]>([]);
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(true);
@@ -341,6 +346,7 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
     (w: Workout) => {
       hrCollected.current = [];
       setLogsRef.current = {};
+    setLoggedSets({});
       setPrAlert(null);
       lastExerciseIndex.current = -1;
       lastEngineState.current = "idle";
@@ -403,9 +409,28 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
         ...prev.filter((l) => l.setIndex !== log.setIndex),
         log,
       ];
+      setLoggedSets({ ...setLogsRef.current });
     }
     engine.completeSet();
   }, []);
+
+  const editSetLog = useCallback(
+    (exerciseIndex: number, setIndex: number, patch: { reps?: number; band?: BandColor }) => {
+      const list = setLogsRef.current[exerciseIndex];
+      if (!list) return;
+      setLogsRef.current[exerciseIndex] = list.map((l) =>
+        l.setIndex === setIndex && !l.warmup
+          ? {
+              ...l,
+              ...(patch.reps !== undefined ? { reps: Math.max(0, Math.min(99, Math.round(patch.reps))) } : {}),
+              ...(patch.band ? { band: patch.band } : {}),
+            }
+          : l
+      );
+      setLoggedSets({ ...setLogsRef.current });
+    },
+    []
+  );
 
   const skipRest = useCallback(() => {
     engineRef.current?.skipRest();
@@ -424,6 +449,7 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
     if (!engineRef.current) return;
     engineRef.current.end();
     setLogsRef.current = {};
+    setLoggedSets({});
     setPrAlert(null);
     stopTicker();
     healthStop();
@@ -487,6 +513,7 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
       if (u) syncSessionsToCloud(u.id, [session]).catch(() => {});
 
       setPrAlert(null);
+      setLoggedSets({});
       setActiveWorkout(null);
       setSnapshot(null);
       engineRef.current = null;
@@ -543,6 +570,8 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
       skipRest,
       adjustRest,
       prAlert,
+      loggedSets,
+      editSetLog,
       endWorkout,
       cancelWorkout,
       bpm,
@@ -578,6 +607,8 @@ export function WorkoutProvider({ children }: { children: React.ReactNode }) {
       skipRest,
       adjustRest,
       prAlert,
+      loggedSets,
+      editSetLog,
       endWorkout,
       cancelWorkout,
       bpm,
